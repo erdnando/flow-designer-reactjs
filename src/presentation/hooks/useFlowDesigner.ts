@@ -7,6 +7,172 @@ import { PositionPersistenceService } from '../../infrastructure/services/Positi
 import { Position } from '../../domain/value-objects/Position';
 import { logger } from '../../shared/utils';
 
+/**
+ * Función utilidad para detectar cambios estructurales entre conjuntos de nodos
+ * @param sourceNodes - Los nodos de origen (generalmente del estado de la aplicación)
+ * @param targetNodes - Los nodos destino (generalmente del estado de ReactFlow)
+ * @returns True si hay cambios estructurales significativos (nodos añadidos/eliminados)
+ */
+const detectStructuralChanges = (
+  sourceNodes: { id: string }[], 
+  targetNodes: { id: string }[]
+): boolean => {
+  // Caso 1: Diferente número de nodos
+  if (sourceNodes.length !== targetNodes.length) {
+    return true;
+  }
+  
+  // Caso 2: Verificar si todos los IDs coinciden
+  const sourceIds = new Set(sourceNodes.map(node => node.id));
+  
+  // Verificar si hay algún nodo en target que no esté en source
+  const hasUnknownNodes = targetNodes.some(node => !sourceIds.has(node.id));
+  if (hasUnknownNodes) {
+    return true;
+  }
+  
+  // Verificar si el número de IDs únicos coincide con el número de nodos
+  // (esto detecta duplicados en cualquier colección)
+  if (sourceIds.size !== sourceNodes.length) {
+    return true;
+  }
+  
+  return false; // No hay cambios estructurales
+};
+
+/**
+ * Función utilidad para validar y redondear coordenadas de posición
+ * @param position - La posición a validar
+ * @returns La posición redondeada o undefined si no es válida
+ */
+const validateAndRoundPosition = (position: any): { x: number, y: number } | undefined => {
+  if (position && 
+      typeof position.x === 'number' && 
+      typeof position.y === 'number' &&
+      !isNaN(position.x) && 
+      !isNaN(position.y)) {
+    return {
+      x: Math.round(position.x),
+      y: Math.round(position.y)
+    };
+  }
+  return undefined;
+};
+
+/**
+ * Función utilidad para determinar la posición final de un nodo considerando todas las fuentes
+ * @param nodeId - El ID del nodo
+ * @param statePosition - Posición almacenada en el estado
+ * @param positionsRef - Referencia de posiciones actuales
+ * @param persistedPositions - Mapa de posiciones persistidas
+ * @returns La posición final a utilizar para el nodo
+ */
+const determineFinalPosition = (
+  nodeId: string,
+  statePosition: any,
+  positionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>,
+  persistedPositions: Map<string, any>
+): { x: number, y: number } => {
+  // PRIORIDAD DE POSICIONES: 
+  // 1. Ref actual (posición más reciente en la UI)
+  // 2. Posición persistida (del almacenamiento)
+  // 3. Posición del estado (del modelo de dominio)
+  
+  const existingPosition = positionsRef.current.get(nodeId);
+  const persistedPosition = persistedPositions.get(nodeId);
+  
+  // Intentar usar la posición del ref (más actual)
+  if (existingPosition) {
+    return existingPosition;
+  }
+  
+  // Si no hay posición en ref, intentar usar la persistida
+  if (persistedPosition) {
+    const validatedPosition = validateAndRoundPosition(persistedPosition);
+    if (validatedPosition) {
+      return validatedPosition;
+    }
+  }
+  
+  // Como último recurso, usar la posición del estado
+  const validatedStatePosition = validateAndRoundPosition(statePosition);
+  if (validatedStatePosition) {
+    return validatedStatePosition;
+  }
+  
+  // Si todo falla, posición por defecto
+  return { x: 100, y: 100 };
+};
+
+/**
+ * Función para manejar la eliminación de nodos con feedback visual
+ * @param nodeId - ID del nodo a eliminar
+ * @param setNodes - Función para actualizar nodos en React Flow
+ * @param actions - Acciones de FlowContext
+ * @param isSyncingRef - Referencia al estado de sincronización
+ * @returns Promesa que se resuelve cuando la eliminación visual está completa
+ */
+const handleNodeDeletion = async (
+  nodeId: string,
+  setNodes: (updater: any) => void,
+  actions: any,
+  isSyncingRef: React.MutableRefObject<boolean>
+): Promise<void> => {
+  // Activar bloqueo de sincronización
+  isSyncingRef.current = true;
+  
+  // Paso 1: Marcar visualmente el nodo como "en proceso de eliminación"
+  setNodes((currNodes: any[]) => 
+    currNodes.map(node => 
+      node.id === nodeId 
+        ? { 
+            ...node, 
+            style: { ...node.style, opacity: 0.2 },
+            data: { 
+              ...node.data,
+              config: { ...node.data?.config, _deletionInProgress: true }
+            }
+          }
+        : node
+    )
+  );
+  
+  // Esperar a que la animación visual se complete
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  try {
+    // Paso 2: Eliminar del modelo de dominio (a través de FlowContext)
+    await actions.removeNode(nodeId);
+    
+    // Paso 3: Eliminar completamente de React Flow
+    setNodes((currNodes: any[]) => currNodes.filter(node => node.id !== nodeId));
+    
+    // Esperar para asegurar que la UI se actualiza
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Paso 4: Forzar refresh del canvas
+    try {
+      const instance = document.querySelector('.react-flow');
+      if (instance) {
+        instance.dispatchEvent(new Event('refresh', { bubbles: true }));
+      }
+    } catch (e) {
+      console.warn('No se pudo forzar refresh del canvas:', e);
+    }
+    
+  } catch (error) {
+    console.error('Error al eliminar nodo:', error);
+    
+    // Failsafe: intentar eliminar de la UI si falla la acción
+    setNodes((currNodes: any[]) => currNodes.filter(n => n.id !== nodeId));
+  } finally {
+    // Liberar el bloqueo después de todas las operaciones
+    setTimeout(() => {
+      isSyncingRef.current = false;
+    }, 100);
+  }
+};
+
 export const useFlowDesigner = () => {
   const { state, actions } = useFlowContext();
   const { project } = useReactFlow();
@@ -63,14 +229,20 @@ export const useFlowDesigner = () => {
     const converted = validNodes.map(node => {
       logger.debug('Converting node:', node);
       
-      // PRIORIDAD DE POSICIONES: 1. Ref actual, 2. Posición persistida, 3. Posición del estado
-      const existingPosition = nodePositionsRef.current.get(node.id);
-      const persistedPosition = persistedPositions.get(node.id);
-      const finalPosition = existingPosition || persistedPosition || node.position;
+      // FASE 3: Usar la función determineFinalPosition para obtener la posición final
+      const finalPosition = determineFinalPosition(
+        node.id, 
+        node.position, 
+        nodePositionsRef, 
+        persistedPositions
+      );
       
-      logger.debug(`Node ${node.id} - State position:`, node.position, 'Ref position:', existingPosition, 'Persisted position:', persistedPosition, 'Final position:', finalPosition);
+      logger.debug(`Node ${node.id} - State position:`, node.position, 
+                  'Ref position:', nodePositionsRef.current.get(node.id), 
+                  'Persisted position:', persistedPositions.get(node.id), 
+                  'Final position:', finalPosition);
       
-      // Guardar la posición actual en nuestro ref
+      // Guardar la posición calculada en nuestro ref
       nodePositionsRef.current.set(node.id, finalPosition);
       
       return {
@@ -228,7 +400,7 @@ export const useFlowDesigner = () => {
       }
     }
     
-    // Crear una firma más detallada que incluya posiciones redondeadas
+    // Crear una firma más detallada que incluya posiciones redondeadas (para cambios menores)
     const initialNodesSignature = JSON.stringify(
       initialNodes.map(n => ({ 
         id: n.id, 
@@ -268,15 +440,10 @@ export const useFlowDesigner = () => {
       logger.info('🔄 Initial load detected, forcing node sync (FIX for missing nodes)');
       isSyncingRef.current = true;
       
-      // Actualizar las posiciones de referencia antes de sincronizar
+      // FASE 3: Usar la función de validación para actualizar posiciones durante carga inicial
       initialNodes.forEach(node => {
-        if (node.position && 
-            typeof node.position.x === 'number' && 
-            typeof node.position.y === 'number') {
-          const roundedPosition = {
-            x: Math.round(node.position.x),
-            y: Math.round(node.position.y)
-          };
+        const roundedPosition = validateAndRoundPosition(node.position);
+        if (roundedPosition) {
           nodePositionsRef.current.set(node.id, roundedPosition);
         } else {
           logger.warn('Invalid position data during initial sync:', node.position);
@@ -297,13 +464,14 @@ export const useFlowDesigner = () => {
       return;
     }
     
-    // CORRECCIÓN: También forzar sincronización cuando hay diferencias entre las firmas
-    // aunque no haya cambios estructurales pero en refresh
-    const hasStructuralChanges = initialNodes.length !== nodes.length ||
-      initialNodes.some(initialNode => !nodes.find(currentNode => currentNode.id === initialNode.id));
+    // FASE 1: Usar la función de detección de cambios estructurales mejorada
+    // para identificar si hay cambios importantes en la estructura (adiciones/eliminaciones)
+    const hasStructuralChanges = detectStructuralChanges(initialNodes, nodes);
     
-    // Verificar si las firmas son diferentes (puede indicar un refresh)
+    // Verificar si las firmas son diferentes (puede indicar un refresh o cambios de posición)
     const signaturesDiffer = lastSyncedNodesRef.current !== initialNodesSignature;
+    
+    logger.debug(`Detección de cambios: Estructurales=${hasStructuralChanges}, Firmas coinciden=${initialNodesSignature === currentNodesSignature}`);
     
     logger.debug('Has structural changes:', hasStructuralChanges);
     logger.debug('Signatures differ:', signaturesDiffer);
@@ -314,15 +482,10 @@ export const useFlowDesigner = () => {
       
       isSyncingRef.current = true;
       
-      // Actualizar las posiciones de referencia antes de sincronizar
+      // FASE 3: Usar la función de validación para actualizar posiciones durante sincronización
       initialNodes.forEach(node => {
-        if (node.position && 
-            typeof node.position.x === 'number' && 
-            typeof node.position.y === 'number') {
-          const roundedPosition = {
-            x: Math.round(node.position.x),
-            y: Math.round(node.position.y)
-          };
+        const roundedPosition = validateAndRoundPosition(node.position);
+        if (roundedPosition) {
           nodePositionsRef.current.set(node.id, roundedPosition);
         } else {
           logger.warn('Invalid position data during sync:', node.position);
@@ -488,38 +651,32 @@ export const useFlowDesigner = () => {
     const authorizedChanges = changes.filter(change => {
       logger.debug('Analyzing change:', change);
       
-      // PERMITIR cambios de agregado de nodos (add)
+      // FASE 2: Permitir cambios de agregado de nodos (add) con validación simplificada
       if (change.type === 'add') {
         logger.success('AUTHORIZED: Adding new node:', change.id);
-        // Asegurar que la posición se registre en nuestro ref con redondeo
-        if (change.item && change.item.position && 
-            typeof change.item.position.x === 'number' && 
-            typeof change.item.position.y === 'number') {
-          const roundedPosition = {
-            x: Math.round(change.item.position.x),
-            y: Math.round(change.item.position.y)
-          };
-          nodePositionsRef.current.set(change.item.id, roundedPosition);
-        } else {
-          logger.warn('Invalid position data during node add:', change.item?.position);
+        
+        // Usar la función de validación de posición
+        if (change.item) {
+          const roundedPosition = validateAndRoundPosition(change.item.position);
+          if (roundedPosition) {
+            nodePositionsRef.current.set(change.item.id, roundedPosition);
+          } else {
+            logger.warn('Invalid position data during node add:', change.item?.position);
+          }
         }
         return true;
       }
       
-      // PERMITIR cambios de reemplazo completo de nodos (replace) SOLO durante sincronización
+      // FASE 2: Permitir cambios de reemplazo completo de nodos (replace) con validación simplificada
       if (change.type === 'replace') {
         if (isSyncingRef.current) {
-          logger.success('AUTHORIZED: Replacing nodes during sync:', change);
+          logger.success('AUTHORIZED: Replacing nodes during sync');
+          
           // Actualizar nuestras referencias con las nuevas posiciones redondeadas
           if (change.item && Array.isArray(change.item)) {
             change.item.forEach((node: any) => {
-              if (node.position && 
-                  typeof node.position.x === 'number' && 
-                  typeof node.position.y === 'number') {
-                const roundedPosition = {
-                  x: Math.round(node.position.x),
-                  y: Math.round(node.position.y)
-                };
+              const roundedPosition = validateAndRoundPosition(node.position);
+              if (roundedPosition) {
                 nodePositionsRef.current.set(node.id, roundedPosition);
               } else {
                 logger.warn('Invalid position data during node replace:', node.position);
@@ -528,12 +685,12 @@ export const useFlowDesigner = () => {
           }
           return true;
         } else {
-          logger.error('BLOCKED: Replace not during sync:', change);
+          logger.error('BLOCKED: Replace not during sync');
           return false;
         }
       }
       
-      // BLOQUEAR cambios de posición
+      // FASE 2: Gestión de cambios de posición simplificada
       if (change.type === 'position') {
         // REGLA NUCLEAR: Solo permitir si dragging está definido
         if (change.dragging === undefined) {
@@ -545,12 +702,10 @@ export const useFlowDesigner = () => {
         if (change.dragging === true) {
           logger.success('AUTHORIZED: User started dragging node:', change.id);
           draggingNodesRef.current.add(change.id);
-          // Validar que la posición existe antes de procesarla
-          if (change.position && typeof change.position.x === 'number' && typeof change.position.y === 'number') {
-            const roundedPosition = {
-              x: Math.round(change.position.x),
-              y: Math.round(change.position.y)
-            };
+          
+          // Usar la función de validación de posición
+          const roundedPosition = validateAndRoundPosition(change.position);
+          if (roundedPosition) {
             nodePositionsRef.current.set(change.id, roundedPosition);
           } else {
             logger.warn('Invalid position data during drag start:', change.position);
@@ -562,12 +717,10 @@ export const useFlowDesigner = () => {
           if (draggingNodesRef.current.has(change.id)) {
             logger.success('AUTHORIZED: User finished dragging node:', change.id);
             draggingNodesRef.current.delete(change.id);
-            // Validar que la posición existe antes de procesarla
-            if (change.position && typeof change.position.x === 'number' && typeof change.position.y === 'number') {
-              const roundedPosition = {
-                x: Math.round(change.position.x),
-                y: Math.round(change.position.y)
-              };
+            
+            // Usar la función de validación de posición
+            const roundedPosition = validateAndRoundPosition(change.position);
+            if (roundedPosition) {
               nodePositionsRef.current.set(change.id, roundedPosition);
             } else {
               logger.warn('Invalid position data during drag end:', change.position);
@@ -645,10 +798,7 @@ export const useFlowDesigner = () => {
     // Procesar para nuestro estado
     authorizedChanges.forEach(change => {
       if (change.type === 'remove') {
-        logger.info('🗑️ ELIMINACIÓN DE NODO DETECTADA:', change.id);
-        
-        // ANTI-FANTASMAS: Activar bloqueo de sincronización durante la eliminación
-        isSyncingRef.current = true;
+        logger.info(`🗑️ FASE 4: Eliminación simplificada para nodo: ${change.id}`);
         
         // Asegurarse de que el nodo existe en el estado antes de eliminarlo
         const nodeExists = nodes.some(node => node.id === change.id);
@@ -677,73 +827,21 @@ export const useFlowDesigner = () => {
           logger.debug('Persisted position removed for node:', change.id);
         }
         
-        // Llamar a la acción de eliminación inmediatamente
-        logger.info('🚀 Ejecutando acción de eliminación para nodo:', change.id);
-        try {
-          // Paso 1: Marcar visualmente como eliminado (semi-transparente)
-          setNodes(currNodes => currNodes.map(n => 
-            n.id === change.id 
-              ? { 
-                  ...n, 
-                  style: { ...n.style, opacity: 0.3 }, 
-                  data: { 
-                    ...n.data, 
-                    config: { 
-                      ...n.data.config, 
-                      _deletionInProgress: true 
-                    } 
-                  } 
-                }
-              : n
-          ));
-          
-          // Paso 2: Eliminar del estado del contexto
-          actions.removeNode(change.id);
-          logger.success('✅ Nodo eliminado con éxito del contexto:', change.id);
-          
-          // Paso 3: Forzar eliminación visual después de un breve retraso
-          setTimeout(() => {
-            logger.info('🧹 Forzando eliminación visual del nodo:', change.id);
-            setNodes(currNodes => currNodes.filter(n => n.id !== change.id));
-            
-            // Forzar un refresh completo del canvas para asegurar actualización
-            setTimeout(() => {
-              try {
-                const instance = document.querySelector('.react-flow');
-                if (instance) {
-                  // Crear un evento sintético para forzar reflow
-                  instance.dispatchEvent(new Event('refresh', { bubbles: true }));
-                }
-              } catch (e) {
-                logger.warn('No se pudo forzar refresh manual del canvas:', e);
-              }
-            }, 50);
-          }, 30);
-        } catch (error) {
-          logger.error('❌ Error al eliminar nodo:', error);
-          
-          // FAILSAFE: Intentar eliminar de la UI si falla la acción
-          setNodes(currNodes => currNodes.filter(n => n.id !== change.id));
-        }
-        
-        // Liberar el bloqueo después de un tiempo suficiente para todas las operaciones
-        setTimeout(() => {
-          isSyncingRef.current = false;
-        }, 300);
+        // Usar la función dedicada para el manejo de eliminación de nodos
+        handleNodeDeletion(change.id, setNodes, actions, isSyncingRef)
+          .then(() => logger.success('✅ Eliminación de nodo completada:', change.id))
+          .catch(error => logger.error('❌ Error durante eliminación de nodo:', error));
       } else if (change.type === 'select') {
         logger.debug('Node selection changed for:', change.id, 'Selected:', change.selected);
         if (change.selected) {
           actions.selectNode(change.id);
         }
-      } else if (change.type === 'position' && change.position && change.dragging === false) {
+      } else if (change.type === 'position' && change.dragging === false) {
         logger.debug('Final position update for:', change.id, 'Position:', change.position);
-        // Validar que la posición tiene las propiedades correctas
-        if (typeof change.position.x === 'number' && typeof change.position.y === 'number') {
-          const roundedPosition = {
-            x: Math.round(change.position.x),
-            y: Math.round(change.position.y)
-          };
-          
+        
+        // FASE 2: Usar la función de validación de posición para el manejo final
+        const roundedPosition = validateAndRoundPosition(change.position);
+        if (roundedPosition) {
           // Persistir la posición inmediatamente
           if (state.currentFlow) {
             const domainPosition = new Position(roundedPosition.x, roundedPosition.y);

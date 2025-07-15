@@ -1,0 +1,286 @@
+.properties-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.properties-panel__header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.properties-panel__title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.properties-panel__description {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.properties-panel__content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.properties-panel__form {
+  padding: 0;
+}
+
+.properties-panel__section {
+  padding: 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.properties-panel__section:last-child {
+  border-bottom: none;
+}
+
+.properties-panel__section-title {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.properties-panel__node-type {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.properties-panel__node-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.properties-panel__node-info {
+  flex: 1;
+}
+
+.properties-panel__node-label {
+  font-weight: 600;
+  font-size: 16px;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.properties-panel__node-id {
+  font-size: 12px;
+  color: #6b7280;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.properties-panel__field {
+  margin-bottom: 16px;
+}
+
+.properties-panel__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.properties-panel__input,
+.properties-panel__textarea,
+.properties-panel__select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #111827;
+  background: white;
+  transition: all 0.2s ease-in-out;
+}
+
+.properties-panel__input:focus,
+.properties-panel__textarea:focus,
+.properties-panel__select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.properties-panel__textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.properties-panel__position {
+  display: flex;
+  gap: 16px;
+}
+
+.properties-panel__position-item {
+  flex: 1;
+  padding: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.properties-panel__position-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.properties-panel__position-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.properties-panel__metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.properties-panel__metadata-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.properties-panel__metadata-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.properties-panel__metadata-value {
+  color: #111827;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.properties-panel__delete-btn {
+  width: 100%;
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.properties-panel__delete-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.properties-panel__delete-btn:active {
+  transform: scale(0.98);
+}
+
+.properties-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.properties-panel__empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.properties-panel__empty-text {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.properties-panel__empty-description {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* Scrollbar personalizado */
+.properties-panel__content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.properties-panel__content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.properties-panel__content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.properties-panel__content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .properties-panel__header {
+    padding: 16px;
+  }
+  
+  .properties-panel__section {
+    padding: 16px;
+  }
+  
+  .properties-panel__node-type {
+    padding: 12px;
+  }
+  
+  .properties-panel__node-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+  
+  .properties-panel__position {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

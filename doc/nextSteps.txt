@@ -1,0 +1,23 @@
+🚀 Próximos pasos sugeridos:
+1. Funcionalidades básicas que faltan
+Guardar/Cargar flujos: Persistencia local o en base de datos
+Validación de flujos: Verificar que los flujos sean válidos
+Ejecución de flujos: Sistema básico para ejecutar los flujos
+Historial/Undo-Redo: Deshacer y rehacer acciones
+2. Mejoras de UX/UI
+Toolbar superior: Botones de guardar, nuevo, abrir, etc.
+Minimap mejorado: Navegación visual del canvas
+Zoom y pan mejorado: Controles más intuitivos
+Temas: Modo oscuro/claro
+Shortcuts de teclado: Ctrl+Z, Ctrl+S, Delete, etc.
+3. Funcionalidades avanzadas
+Grupos de nodos: Agrupar nodos relacionados
+Comentarios/Anotaciones: Añadir notas al flujo
+Configuración de nodos más avanzada: Formularios dinámicos
+Validación en tiempo real: Mostrar errores en el flujo
+Export/Import: JSON, imagen, etc.
+4. Integración con servicios
+Base de datos real: PostgreSQL, MongoDB, etc.
+Autenticación: Sistema de usuarios
+API REST: Backend para gestionar flujos
+Colaboración en tiempo real: WebSockets

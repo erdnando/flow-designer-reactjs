@@ -5,6 +5,7 @@ import type { FlowNode, FlowEdge, NodeType } from '../../shared/types';
 import { NODE_TYPES } from '../../shared/constants';
 import { PositionPersistenceService } from '../../infrastructure/services/PositionPersistenceService';
 import { Position } from '../../domain/value-objects/Position';
+import { logger } from '../../shared/utils';
 
 export const useFlowDesigner = () => {
   const { state, actions } = useFlowContext();
@@ -21,30 +22,30 @@ export const useFlowDesigner = () => {
 
   // Convertir entidades del dominio a formato React Flow
   const initialNodes: FlowNode[] = useMemo(() => {
-    console.log('🔧 useFlowDesigner: Converting nodes...');
-    console.log('🔧 Current flow exists:', !!state.currentFlow);
+    logger.debug('useFlowDesigner: Converting nodes...');
+    logger.debug('Current flow exists:', !!state.currentFlow);
     
     if (!state.currentFlow) {
-      console.log('🔧 No current flow, returning empty array');
+      logger.debug('No current flow, returning empty array');
       return [];
     }
     
-    console.log('🔧 Flow nodes count:', state.currentFlow.nodes.length);
-    console.log('🔧 Flow nodes:', state.currentFlow.nodes);
+    logger.debug('Flow nodes count:', state.currentFlow.nodes.length);
+    logger.debug('Flow nodes:', state.currentFlow.nodes);
     
     // Cargar posiciones persistidas
     const persistedPositions = positionPersistence.loadFlowPositions(state.currentFlow.id);
-    console.log('💾 Loaded persisted positions:', persistedPositions.size);
+    logger.debug('Loaded persisted positions:', persistedPositions.size);
     
     const converted = state.currentFlow.nodes.map(node => {
-      console.log('🔧 Converting node:', node);
+      logger.debug('Converting node:', node);
       
       // PRIORIDAD DE POSICIONES: 1. Ref actual, 2. Posición persistida, 3. Posición del estado
       const existingPosition = nodePositionsRef.current.get(node.id);
       const persistedPosition = persistedPositions.get(node.id);
       const finalPosition = existingPosition || persistedPosition || node.position;
       
-      console.log(`🔧 Node ${node.id} - State position:`, node.position, 'Ref position:', existingPosition, 'Persisted position:', persistedPosition, 'Final position:', finalPosition);
+      logger.debug(`Node ${node.id} - State position:`, node.position, 'Ref position:', existingPosition, 'Persisted position:', persistedPosition, 'Final position:', finalPosition);
       
       // Guardar la posición actual en nuestro ref
       nodePositionsRef.current.set(node.id, finalPosition);
@@ -65,21 +66,21 @@ export const useFlowDesigner = () => {
       };
     });
     
-    console.log('✅ Converted nodes:', converted);
+    logger.success('Converted nodes:', converted);
     return converted;
   }, [state.currentFlow, actions, positionPersistence]);
 
   const initialEdges: FlowEdge[] = useMemo(() => {
-    console.log('🔧 useFlowDesigner: Converting connections to edges...');
-    console.log('🔧 Current flow exists:', !!state.currentFlow);
+    logger.debug('useFlowDesigner: Converting connections to edges...');
+    logger.debug('Current flow exists:', !!state.currentFlow);
     
     if (!state.currentFlow) {
-      console.log('🔧 No current flow, returning empty edges array');
+      logger.debug('No current flow, returning empty edges array');
       return [];
     }
     
-    console.log('🔧 Flow connections count:', state.currentFlow.connections.length);
-    console.log('🔧 Flow connections:', state.currentFlow.connections);
+    logger.debug('Flow connections count:', state.currentFlow.connections.length);
+    logger.debug('Flow connections:', state.currentFlow.connections);
     
     // Filtrar cualquier conexión que tenga nodos inexistentes
     const validNodeIds = state.currentFlow.nodes.map(node => node.id);
@@ -88,12 +89,12 @@ export const useFlowDesigner = () => {
     );
     
     if (validConnections.length !== state.currentFlow.connections.length) {
-      console.log('⚠️ Filtered out invalid connections:', 
+      logger.warn('Filtered out invalid connections:', 
         state.currentFlow.connections.length - validConnections.length);
     }
     
     const converted = validConnections.map(connection => {
-      console.log('🔧 Converting connection to edge:', connection);
+      logger.debug('Converting connection to edge:', connection);
       return {
         id: connection.id,
         source: connection.sourceNodeId,
@@ -112,7 +113,7 @@ export const useFlowDesigner = () => {
       };
     });
     
-    console.log('✅ Converted edges:', converted);
+    logger.success('Converted edges:', converted);
     return converted;
   }, [state.currentFlow]);
 
@@ -128,13 +129,13 @@ export const useFlowDesigner = () => {
   // Sincronizar nodes cuando el estado cambie - ULTRA PROTECCIÓN CONTRA LOOPS
   useEffect(() => {
     if (isSyncingRef.current) {
-      console.log('🔄 Already syncing, skipping nodes sync');
+      logger.debug('Already syncing, skipping nodes sync');
       return;
     }
 
-    console.log('🔄 Syncing nodes with state...');
-    console.log('🔄 Current nodes count:', nodes.length);
-    console.log('🔄 Initial nodes count:', initialNodes.length);
+    logger.debug('Syncing nodes with state...');
+    logger.debug('Current nodes count:', nodes.length);
+    logger.debug('Initial nodes count:', initialNodes.length);
     
     // Crear una firma más detallada que incluya posiciones redondeadas
     const initialNodesSignature = JSON.stringify(

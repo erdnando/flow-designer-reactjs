@@ -3,38 +3,38 @@ import { Flow } from '../../domain/entities/Flow';
 import { Node } from '../../domain/entities/Node';
 import { Connection } from '../../domain/entities/Connection';
 import type { FlowProps } from '../../shared/types';
-import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../../shared/utils';
 
 export class InMemoryFlowRepository implements FlowRepository {
   private flows: Map<string, Flow> = new Map();
 
   async saveFlow(flow: Flow): Promise<Flow> {
     try {
-      console.log('🔧 InMemoryFlowRepository.saveFlow called with flow:', flow);
-      console.log('🔧 Flow ID:', flow.id);
+      logger.debug('InMemoryFlowRepository.saveFlow called with flow:', flow);
+      logger.debug('Flow ID:', flow.id);
       
       if (!flow.id) {
-        console.error('❌ Flow ID is missing!');
+        logger.error('Flow ID is missing!');
         throw new Error('Cannot save flow: ID is required');
       }
       
       this.flows.set(flow.id, flow);
-      console.log('✅ Flow saved in repository. Current flows:', this.flows.size);
+      logger.success('Flow saved in repository. Current flows:', this.flows.size);
       return flow;
     } catch (error) {
-      console.error('❌ Error in saveFlow:', error);
+      logger.error('Error in saveFlow:', error);
       throw error;
     }
   }
 
   async getFlowById(id: string): Promise<Flow | null> {
     try {
-      console.log('🔧 InMemoryFlowRepository.getFlowById called with id:', id);
+      logger.debug('InMemoryFlowRepository.getFlowById called with id:', id);
       const flow = this.flows.get(id) || null;
-      console.log('🔧 Flow found:', !!flow);
+      logger.debug('Flow found:', !!flow);
       return flow;
     } catch (error) {
-      console.error('❌ Error in getFlowById:', error);
+      logger.error('Error in getFlowById:', error);
       throw error;
     }
   }
@@ -126,17 +126,17 @@ export class InMemoryFlowRepository implements FlowRepository {
 
   async createFlow(flowData: Omit<FlowProps, 'id'>): Promise<Flow> {
     try {
-      console.log('🔧 InMemoryFlowRepository.createFlow called with:', flowData);
+      logger.debug('InMemoryFlowRepository.createFlow called with:', flowData);
       // Crear un flujo con un ID generado
       const flow = new Flow({
         ...flowData
       });
-      console.log('✅ Flow created in repository:', flow);
+      logger.success('Flow created in repository:', flow);
       
       // Guardar en memoria
       return await this.saveFlow(flow);
     } catch (error) {
-      console.error('❌ Error in InMemoryFlowRepository.createFlow:', error);
+      logger.error('Error in InMemoryFlowRepository.createFlow:', error);
       throw error;
     }
   }

@@ -5,10 +5,11 @@ import { Node } from '../../domain/entities/Node';
 import { Connection } from '../../domain/entities/Connection';
 import type { FlowProps, NodeProps, ConnectionProps } from '../../shared/types';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../../shared/utils';
 
 export class FlowService {
   constructor(private flowRepository: FlowRepository) {
-    console.log('🔧 FlowService constructor called with repository:', flowRepository);
+    logger.debug('FlowService constructor called with repository:', flowRepository);
     // Verificar que el repositorio tenga los métodos requeridos
     if (!this.flowRepository) {
       console.error('❌ flowRepository is undefined in FlowService constructor');
@@ -18,17 +19,17 @@ export class FlowService {
 
   // Flow operations
   async createFlow(flowData: Omit<FlowProps, 'id'>): Promise<Flow> {
-    console.log('🔧 FlowService.createFlow called with:', flowData);
+    logger.debug('FlowService.createFlow called with:', flowData);
     try {
       // Crear directamente una nueva instancia de Flow
       const flow = new FlowImpl({
         ...flowData
       });
-      console.log('✅ Flow created:', flow);
+      logger.success('Flow created:', flow);
       
       // Guardar el flow en el repositorio
       await this.flowRepository.saveFlow(flow);
-      console.log('✅ Flow saved:', flow);
+      logger.success('Flow saved:', flow);
       
       return flow;
     } catch (error) {
@@ -41,7 +42,7 @@ export class FlowService {
 
   async getFlow(id: string): Promise<Flow | null> {
     try {
-      console.log('🔧 FlowService.getFlow called with id:', id);
+      logger.debug('FlowService.getFlow called with id:', id);
       return await this.flowRepository.getFlowById(id);
     } catch (error) {
       console.error('❌ Error in getFlow:', error);
@@ -51,7 +52,7 @@ export class FlowService {
 
   async getAllFlows(): Promise<Flow[]> {
     try {
-      console.log('🔧 FlowService.getAllFlows called');
+      logger.debug('FlowService.getAllFlows called');
       return await this.flowRepository.getAllFlows();
     } catch (error) {
       console.error('❌ Error in getAllFlows:', error);
@@ -61,7 +62,7 @@ export class FlowService {
 
   async deleteFlow(id: string): Promise<boolean> {
     try {
-      console.log('🔧 FlowService.deleteFlow called with id:', id);
+      logger.debug('FlowService.deleteFlow called with id:', id);
       return await this.flowRepository.deleteFlow(id);
     } catch (error) {
       console.error('❌ Error in deleteFlow:', error);
@@ -72,7 +73,7 @@ export class FlowService {
   // Node operations
   async addNode(flowId: string, nodeData: Omit<NodeProps, 'id'>): Promise<Node> {
     try {
-      console.log('🔧 FlowService.addNode called with:', { flowId, nodeData });
+      logger.debug('FlowService.addNode called with:', { flowId, nodeData });
       
       // Obtener el flow
       const flow = await this.flowRepository.getFlowById(flowId);
@@ -84,15 +85,15 @@ export class FlowService {
       const node = new Node({
         ...nodeData
       });
-      console.log('✅ Node created:', node);
+      logger.success('Node created:', node);
       
       // Agregar nodo al flow
       flow.addNode(node);
-      console.log('✅ Node added to flow');
+      logger.success('Node added to flow');
       
       // Guardar flow actualizado
       await this.flowRepository.saveFlow(flow);
-      console.log('✅ Flow updated with new node');
+      logger.success('Flow updated with new node');
       
       return node;
     } catch (error) {
@@ -103,7 +104,7 @@ export class FlowService {
 
   async updateNode(flowId: string, nodeId: string, updates: Partial<NodeProps>): Promise<Node> {
     try {
-      console.log('🔧 FlowService.updateNode called with:', { flowId, nodeId, updates });
+      logger.debug('FlowService.updateNode called with:', { flowId, nodeId, updates });
       
       // Obtener el flow
       const flow = await this.flowRepository.getFlowById(flowId);
@@ -121,13 +122,13 @@ export class FlowService {
       if (updates.position) {
         // Usar el método updatePosition del nodo para actualizar la posición
         node.updatePosition(updates.position);
-        console.log('✅ Node position updated to:', node.position);
+        logger.success('Node position updated to:', node.position);
       }
       
       if (updates.data) {
         // Usar el método updateData del nodo para actualizar los datos
         node.updateData(updates.data);
-        console.log('✅ Node data updated');
+        logger.success('Node data updated');
       }
       
       if (updates.type) {

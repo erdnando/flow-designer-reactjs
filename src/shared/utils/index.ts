@@ -69,3 +69,6 @@ export const throttle = <T extends (...args: any[]) => any>(
 
 // Exportar las funciones de globalInit
 export * from './globalInit';
+
+// Exportar el logger
+export * from './logger';

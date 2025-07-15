@@ -54,8 +54,25 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
   }, [selectNode]);
 
   const onInit = useCallback(() => {
-    // Ajustar vista inicial
-    setTimeout(() => fitView(), 100);
+    // Ajustar vista inicial con zoom personalizado muy alejado
+    setTimeout(() => {
+      const flow = document.querySelector('.react-flow');
+      if (flow) {
+        // Primero ajustar la vista y luego aplicar zoom extremo
+        fitView({
+          minZoom: CANVAS_CONFIG.ZOOM_MIN,
+          maxZoom: CANVAS_CONFIG.ZOOM_MAX,
+          duration: 0
+        });
+        
+        // Forzar un nivel de zoom aún más alejado después del fitView
+        const reactFlowInstance = document.querySelector('.react-flow-viewport');
+        if (reactFlowInstance) {
+          // @ts-ignore - Aplicar transformación directa para forzar zoom extremo
+          reactFlowInstance.style.transform = `translate(0px, 0px) scale(${CANVAS_CONFIG.DEFAULT_ZOOM})`;
+        }
+      }
+    }, 200);
   }, [fitView]);
 
   if (isLoading) {
@@ -90,7 +107,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
           type: 'smoothstep',
           animated: true,
           style: {
-            stroke: '#94a3b8',
+            stroke: 'rgba(148, 163, 184, 0.8)',
             strokeWidth: 2
           }
         }}
@@ -107,31 +124,32 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}
-        // Configuraciones MUY ESTRICTAS para evitar comportamientos automáticos
+        // Ajustar configuraciones para facilitar la interacción
         preventScrolling={false}
         nodeOrigin={[0.5, 0.5]}
-        // Desactivar TODOS los comportamientos automáticos
-        autoPanOnNodeDrag={false}
-        autoPanOnConnect={false}
+        // Habilitar comportamientos automáticos útiles
+        autoPanOnNodeDrag={true}
+        autoPanOnConnect={true}
         panOnDrag={true}
-        selectionOnDrag={false}
-        // Desactivar auto-posicionamiento y colisiones
+        selectionOnDrag={true}
+        // Habilitar funcionalidades de navegación
         panOnScroll={true}
         zoomOnPinch={true}
         zoomOnScroll={true}
         zoomOnDoubleClick={true}
         // Configuraciones de zoom y pan
-        minZoom={0.1}
-        maxZoom={4}
+        minZoom={CANVAS_CONFIG.ZOOM_MIN}
+        maxZoom={CANVAS_CONFIG.ZOOM_MAX}
+        defaultViewport={{ x: 0, y: 0, zoom: CANVAS_CONFIG.DEFAULT_ZOOM }}
         // Evitar que ReactFlow haga ajustes automáticos
         nodeExtent={undefined}
         translateExtent={undefined}
         // Desactivar algoritmos de layout automático
         fitViewOptions={{
-          padding: 0.1,
+          padding: 0.5, // Mayor padding para una vista más alejada
           includeHiddenNodes: false,
-          minZoom: 0.1,
-          maxZoom: 4,
+          minZoom: CANVAS_CONFIG.ZOOM_MIN,
+          maxZoom: CANVAS_CONFIG.ZOOM_MAX,
           duration: 0 // Sin animaciones automáticas
         }}
         // Configuraciones adicionales para evitar movimientos automáticos
@@ -147,9 +165,10 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
       >
         {/* Background con patrón de puntos */}
         <Background
+          variant={"dots" as any}
           gap={CANVAS_CONFIG.GRID_SIZE}
           size={1}
-          color="#e2e8f0"
+          color="rgba(255, 255, 255, 0.07)"
         />
 
         {/* Controles de zoom y ajuste */}

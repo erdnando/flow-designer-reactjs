@@ -8,45 +8,8 @@ interface NodePaletteProps {
 }
 
 const NodePalette: React.FC<NodePaletteProps> = ({ className }) => {
-  // Test with local constant to debug import issue
-  const LOCAL_NODE_TYPES = {
-    start: {
-      label: 'Start',
-      description: 'Nodo de inicio del flujo',
-      color: '#10b981',
-      icon: '▶️',
-      allowedInputs: 0,
-      allowedOutputs: 1,
-      shape: 'circle' as const
-    },
-    step: {
-      label: 'Step',
-      description: 'Paso genérico del flujo',
-      color: '#3b82f6',
-      icon: '⚡',
-      allowedInputs: 1,
-      allowedOutputs: 1,
-      shape: 'rectangle' as const
-    },
-    if: {
-      label: 'If',
-      description: 'Nodo condicional (if/else)',
-      color: '#f59e0b',
-      icon: '💎',
-      allowedInputs: 1,
-      allowedOutputs: 2,
-      shape: 'diamond' as const
-    },
-    end: {
-      label: 'End',
-      description: 'Nodo final del flujo',
-      color: '#ef4444',
-      icon: '⏹️',
-      allowedInputs: 1,
-      allowedOutputs: 0,
-      shape: 'circle' as const
-    }
-  };
+  // Use the imported NODE_TYPES instead of local definition
+  console.log('� NodePalette - Using imported NODE_TYPES');
 
   const onDragStart = (event: React.DragEvent, nodeType: NodeType) => {
     console.log('🚀 Drag started:', nodeType);
@@ -57,8 +20,6 @@ const NodePalette: React.FC<NodePaletteProps> = ({ className }) => {
   // Debug logging
   console.log('🔍 NodePalette - Raw import check');
   console.log('🔍 NODE_TYPES imported:', NODE_TYPES);
-  console.log('🔍 LOCAL_NODE_TYPES:', LOCAL_NODE_TYPES);
-  console.log('🔍 Using LOCAL_NODE_TYPES for now...');
 
   return (
     <div className={`node-palette ${className || ''}`}>
@@ -72,12 +33,12 @@ const NodePalette: React.FC<NodePaletteProps> = ({ className }) => {
       <div className="node-palette__content">
         {/* Debug: Show a simple test */}
         <div style={{padding: '10px', background: 'yellow', margin: '5px'}}>
-          Debug: LOCAL_NODE_TYPES loaded = {Object.keys(LOCAL_NODE_TYPES).length} types at {new Date().toLocaleTimeString()}
+          Debug: NODE_TYPES loaded = {Object.keys(NODE_TYPES).length} types at {new Date().toLocaleTimeString()}
           <br />
-          Types: {Object.keys(LOCAL_NODE_TYPES).join(', ')}
+          Types: {Object.keys(NODE_TYPES).join(', ')}
         </div>
         
-        {Object.entries(LOCAL_NODE_TYPES).map(([nodeType, config]) => (
+        {Object.entries(NODE_TYPES).map(([nodeType, config]) => (
           <div
             key={nodeType}
             className="node-palette__item"

@@ -71,37 +71,52 @@ const determineFinalPosition = (
   nodeId: string,
   statePosition: any,
   positionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>,
-  persistedPositions: Map<string, any>
+  persistedPositions: Map<string, any>,
+  isInitialLoad: boolean = false
 ): { x: number, y: number } => {
-  // PRIORIDAD DE POSICIONES: 
-  // 1. Ref actual (posición más reciente en la UI)
-  // 2. Posición persistida (del almacenamiento)
+  // NUEVA PRIORIDAD DE POSICIONES:
+  // 1. Posición persistida (del localStorage) - Más prioritario para mantener la última posición conocida
+  // 2. Ref actual (posición más reciente en la UI)
   // 3. Posición del estado (del modelo de dominio)
+  // 4. Posición por defecto calculada (espaciada y no amontonada)
   
-  const existingPosition = positionsRef.current.get(nodeId);
+  // PRIMERO verificar si hay una posición persistida (esto mantiene la posición después del refresh)
   const persistedPosition = persistedPositions.get(nodeId);
-  
-  // Intentar usar la posición del ref (más actual)
-  if (existingPosition) {
-    return existingPosition;
-  }
-  
-  // Si no hay posición en ref, intentar usar la persistida
   if (persistedPosition) {
     const validatedPosition = validateAndRoundPosition(persistedPosition);
     if (validatedPosition) {
+      logger.debug(`Using persisted position for node ${nodeId}:`, validatedPosition);
       return validatedPosition;
     }
   }
   
-  // Como último recurso, usar la posición del estado
-  const validatedStatePosition = validateAndRoundPosition(statePosition);
-  if (validatedStatePosition) {
-    return validatedStatePosition;
+  // SEGUNDO, usar la referencia actual si existe
+  const existingPosition = positionsRef.current.get(nodeId);
+  if (existingPosition) {
+    logger.debug(`Using position from ref for node ${nodeId}:`, existingPosition);
+    return existingPosition;
   }
   
-  // Si todo falla, posición por defecto
-  return { x: 100, y: 100 };
+  // TERCERO, usar la posición del estado (modelo de dominio) si es válida
+  const validatedStatePos = validateAndRoundPosition(statePosition);
+  if (validatedStatePos) {
+    logger.debug(`Using state position for node ${nodeId}:`, validatedStatePos);
+    return validatedStatePos;
+  }
+  
+  // Si todo falla, generar una posición por defecto calculada para evitar el amontonamiento
+  // Usamos el nodeId como semilla para distribuir los nodos de manera determinística
+  // Esto asegura que cada nodo tenga su propia posición única basada en su ID
+  // y que siempre aparezca en la misma posición en cada carga si no hay otra información
+  const seed = nodeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  
+  // Creamos una cuadrícula virtual para distribuir los nodos de manera espaciada
+  // con 5 columnas, cada una de 150px de ancho
+  const x = 100 + (seed % 5) * 150; // Distribuir horizontalmente
+  const y = 100 + Math.floor((seed % 25) / 5) * 150; // Distribuir verticalmente en 5 filas
+  
+  logger.debug(`No position found for node ${nodeId}, using calculated position:`, { x, y });
+  return { x, y };
 };
 
 /**
@@ -185,6 +200,9 @@ export const useFlowDesigner = () => {
   
   // Mantener las posiciones de los nodos de forma controlada
   const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  
+  // Flag para saber si debemos forzar persistencia
+  const forcePersistenceRef = useRef<boolean>(false);
 
   // CORRECCIÓN: Flag para depuración
   const initialRenderCompleteRef = useRef(false);
@@ -226,6 +244,22 @@ export const useFlowDesigner = () => {
     const persistedPositions = positionPersistence.loadFlowPositions(state.currentFlow.id);
     logger.debug('Loaded persisted positions:', persistedPositions.size);
     
+    // Determinar si es la primera carga del flujo
+    const isInitialLoad = !initialRenderCompleteRef.current;
+    if (isInitialLoad) {
+      logger.info('🔄 Initial load detected - prioritizing persisted positions to preserve last known layout');
+    }
+    
+    // Precargar y verificar posiciones persistidas
+    logger.debug(`Loaded ${persistedPositions.size} persisted positions`);
+    if (persistedPositions.size > 0) {
+      // Log a sample of persisted positions
+      const sampleNodeId = Array.from(persistedPositions.keys())[0];
+      if (sampleNodeId) {
+        logger.debug(`Sample persisted position for node ${sampleNodeId}:`, persistedPositions.get(sampleNodeId));
+      }
+    }
+    
     const converted = validNodes.map(node => {
       logger.debug('Converting node:', node);
       
@@ -234,7 +268,8 @@ export const useFlowDesigner = () => {
         node.id, 
         node.position, 
         nodePositionsRef, 
-        persistedPositions
+        persistedPositions,
+        isInitialLoad
       );
       
       logger.debug(`Node ${node.id} - State position:`, node.position, 
@@ -842,15 +877,19 @@ export const useFlowDesigner = () => {
         // FASE 2: Usar la función de validación de posición para el manejo final
         const roundedPosition = validateAndRoundPosition(change.position);
         if (roundedPosition) {
-          // Persistir la posición inmediatamente
+          // Actualizar la posición en nodePositionsRef inmediatamente
+          nodePositionsRef.current.set(change.id, roundedPosition);
+          
+          // Persistir la posición en localStorage inmediatamente (esto es crucial para mantener posición después del refresh)
           if (state.currentFlow) {
             const domainPosition = new Position(roundedPosition.x, roundedPosition.y);
             positionPersistence.updateNodePosition(state.currentFlow.id, change.id, domainPosition);
-            logger.debug('Position persisted for node:', change.id);
+            logger.debug('Position persisted for node:', change.id, 'Position:', roundedPosition);
           }
           
+          // Actualizar el modelo de dominio
           actions.moveNode(change.id, roundedPosition);
-          logger.success('Node position saved to repository');
+          logger.success('Node position saved to repository and persistence');
         } else {
           logger.warn('Invalid position data in final update:', change.position);
         }
@@ -902,12 +941,20 @@ export const useFlowDesigner = () => {
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+    event.stopPropagation(); // Detener la propagación para evitar conflictos
     
     const nodeType = event.dataTransfer.getData('application/reactflow');
     logger.debug('Drop detected! NodeType:', nodeType);
     
     if (!nodeType) {
       logger.warn('No nodeType found in dataTransfer');
+      // Intenta extraer el tipo del evento si no está en dataTransfer
+      const element = event.target as HTMLElement;
+      const nodeTypeAttribute = element.getAttribute('data-node-type');
+      if (nodeTypeAttribute) {
+        logger.debug('Found nodeType in data attribute:', nodeTypeAttribute);
+        return;
+      }
       return;
     }
 
@@ -972,7 +1019,14 @@ export const useFlowDesigner = () => {
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+    event.stopPropagation(); // Detener la propagación para evitar conflictos
     event.dataTransfer.dropEffect = 'move';
+    
+    // Cambiar el cursor para dar retroalimentación visual
+    if (event.currentTarget instanceof HTMLElement) {
+      event.currentTarget.style.cursor = 'copy';
+    }
+    
     logger.debug('Drag over canvas');
   }, []);
 
@@ -995,6 +1049,37 @@ export const useFlowDesigner = () => {
       logger.info('Cleared persisted positions for current flow');
     }
   }, [positionPersistence, state.currentFlow]);
+  
+  // Efecto para persistir posiciones cuando hay cambios en los nodos
+  useEffect(() => {
+    if (!state.currentFlow || state.isLoading || nodes.length === 0) {
+      return;
+    }
+
+    // Persistir todas las posiciones en localStorage después de cada cambio
+    try {
+      const positions = new Map<string, Position>();
+      
+      // Guardar las posiciones de todos los nodos
+      nodes.forEach(node => {
+        if (node.position) {
+          const validPosition = validateAndRoundPosition(node.position);
+          if (validPosition) {
+            const domainPosition = new Position(validPosition.x, validPosition.y);
+            positions.set(node.id, domainPosition);
+          }
+        }
+      });
+      
+      // Solo guardar si hay posiciones para persistir
+      if (positions.size > 0) {
+        positionPersistence.saveFlowPositions(state.currentFlow.id, positions);
+        logger.debug(`📍 Persistidas ${positions.size} posiciones de nodos en localStorage`);
+      }
+    } catch (error) {
+      logger.error('❌ Error persistiendo posiciones:', error);
+    }
+  }, [nodes, state.currentFlow, state.isLoading, positionPersistence]);
 
   return {
     // Estado

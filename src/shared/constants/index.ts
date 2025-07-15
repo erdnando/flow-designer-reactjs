@@ -40,11 +40,11 @@ export const NODE_TYPES: Record<NodeType, NodeTypeConfig> = {
 };
 
 export const CANVAS_CONFIG = {
-  GRID_SIZE: 20,
-  ZOOM_MIN: 0.1,
+  GRID_SIZE: 30,
+  ZOOM_MIN: 0.01,
   ZOOM_MAX: 2,
   ZOOM_STEP: 0.1,
-  DEFAULT_ZOOM: 1,
+  DEFAULT_ZOOM: 0.1, // Zoom out más extremo (similar a 10x zoom out)
   NODE_WIDTH: 240,
   NODE_HEIGHT: 80,
   CONNECTION_STROKE_WIDTH: 2,

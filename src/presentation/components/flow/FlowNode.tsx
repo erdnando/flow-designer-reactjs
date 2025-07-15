@@ -11,47 +11,10 @@ interface FlowNodeData extends NodeData {
 }
 
 const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => {
-  // Local fallback para NODE_TYPES en caso de problemas de importación
-  const LOCAL_NODE_TYPES = {
-    start: {
-      label: 'Start',
-      description: 'Nodo de inicio del flujo',
-      color: '#10b981',
-      icon: '▶️',
-      allowedInputs: 0,
-      allowedOutputs: 1,
-      shape: 'circle' as const
-    },
-    step: {
-      label: 'Step',
-      description: 'Paso genérico del flujo',
-      color: '#3b82f6',
-      icon: '⚡',
-      allowedInputs: 1,
-      allowedOutputs: 1,
-      shape: 'rectangle' as const
-    },
-    if: {
-      label: 'If',
-      description: 'Nodo condicional (if/else)',
-      color: '#f59e0b',
-      icon: '💎',
-      allowedInputs: 1,
-      allowedOutputs: 2,
-      shape: 'diamond' as const
-    },
-    end: {
-      label: 'End',
-      description: 'Nodo final del flujo',
-      color: '#ef4444',
-      icon: '⏹️',
-      allowedInputs: 1,
-      allowedOutputs: 0,
-      shape: 'circle' as const
-    }
-  };
+  // Usar los NODE_TYPES importados
+  console.log('� FlowNode - Using imported NODE_TYPES');
 
-  const nodeConfig = NODE_TYPES[data.nodeType] || LOCAL_NODE_TYPES[data.nodeType];
+  const nodeConfig = NODE_TYPES[data.nodeType];
   console.log('🔧 FlowNode config for', data.nodeType, ':', nodeConfig);
   
   // Manejo de eliminación directo a ReactFlow

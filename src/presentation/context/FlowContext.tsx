@@ -1,9 +1,11 @@
-import React, { createContext, useContext, useReducer, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useMemo, useEffect, ReactNode } from 'react';
 import { Flow } from '../../domain/entities/Flow';
 import { Node } from '../../domain/entities/Node';
 import type { Connection } from '../../domain/entities/Connection';
 import { FlowService } from '../../application/services/FlowService';
 import { InMemoryFlowRepository } from '../../infrastructure/repositories/InMemoryFlowRepository';
+import { FlowPersistenceService } from '../../infrastructure/services/FlowPersistenceService';
+import { logger } from '../../shared/utils';
 
 interface FlowState {
   currentFlow: Flow | null;
@@ -33,9 +35,9 @@ const initialState: FlowState = {
 const flowReducer = (state: FlowState, action: FlowAction): FlowState => {
   switch (action.type) {
     case 'SET_CURRENT_FLOW':
-      console.log('🔧 Reducer SET_CURRENT_FLOW called with:', action.payload);
+      logger.debug('Reducer SET_CURRENT_FLOW called with:', action.payload);
       const setFlowState = { ...state, currentFlow: action.payload, error: null };
-      console.log('✅ New state with current flow:', setFlowState);
+      logger.success('New state with current flow:', setFlowState);
       return setFlowState;
     
     case 'SET_SELECTED_NODE':
@@ -208,26 +210,27 @@ interface FlowProviderProps {
 }
 
 export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
-  console.log('🔧 FlowProvider: Component initializing...');
+  logger.debug('FlowProvider: Component initializing...');
   const [state, dispatch] = useReducer(flowReducer, initialState);
-  console.log('🔧 FlowProvider: State initialized:', state);
   
   // Inicializar servicios
+  const persistenceService = useMemo(() => new FlowPersistenceService(), []);
+  
   const flowService = useMemo(() => {
-    console.log('🔧 FlowProvider: Creating flowService...');
+    logger.debug('FlowProvider: Creating flowService...');
     try {
       const flowRepository = new InMemoryFlowRepository();
       const service = new FlowService(flowRepository);
       
       // Agregar métodos que faltan si es necesario
       if (typeof service.saveFlow !== 'function') {
-        console.log('⚠️ Adding missing saveFlow method to flowService');
+        logger.warn('Adding missing saveFlow method to flowService');
         service.saveFlow = async (flow: Flow): Promise<Flow> => {
-          console.log('🔧 Enhanced flowService.saveFlow called with flow:', flow);
+          logger.debug('Enhanced flowService.saveFlow called with flow:', flow);
           try {
             return await flowRepository.saveFlow(flow);
           } catch (error) {
-            console.error('❌ Error in saveFlow:', error);
+            logger.error('Error in saveFlow:', error);
             return flow; // Return the flow without saving as fallback
           }
         };
@@ -235,69 +238,109 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
       
       // Verificar otros métodos básicos
       if (typeof service.createFlow !== 'function') {
-        console.error('⚠️ flowService.createFlow is missing');
+        logger.warn('flowService.createFlow is missing');
       }
       if (typeof service.updateNode !== 'function') {
-        console.error('⚠️ flowService.updateNode is missing');
+        logger.warn('flowService.updateNode is missing');
       }
       
-      console.log('✅ FlowService initialized successfully with methods:', 
-        Object.getOwnPropertyNames(Object.getPrototypeOf(service))
-          .filter(name => typeof (service as any)[name] === 'function')
-          .concat(Object.keys(service).filter(key => typeof (service as any)[key] === 'function'))
-      );
-      
+      logger.success('FlowService initialized successfully');
       return service;
     } catch (error) {
-      console.error('❌ Error creating flowService:', error);
+      logger.error('Error creating flowService:', error);
       throw error;
     }
   }, []);
 
-  // Crear flujo inicial automáticamente
-  React.useEffect(() => {
-    console.log('🔧 FlowProvider: useEffect triggered, creating initial flow...');
-    const createInitialFlow = async () => {
+  // Efecto para guardar el flujo cuando cambie
+  useEffect(() => {
+    if (state.currentFlow) {
+      logger.debug('Guardando flujo en localStorage:', state.currentFlow.id);
+      persistenceService.saveFlow(state.currentFlow);
+    }
+  }, [state.currentFlow, persistenceService]);
+
+  // Utilizamos el método de verificación de consistencia del servicio
+  const verifyStorageConsistency = useCallback((flow: Flow) => {
+    logger.debug('Verificando consistencia entre flujo y posiciones...');
+    try {
+      persistenceService.verifyNodePositions(flow);
+      logger.success('✅ Verificación de consistencia completada');
+    } catch (error) {
+      logger.error('❌ Error al verificar consistencia:', error);
+    }
+  }, [persistenceService]);
+
+  // Inicializar: cargar flujo guardado o crear uno nuevo
+  useEffect(() => {
+    logger.debug('Inicializando flujo - buscando guardados o creando nuevo...');
+    
+    const initializeFlow = async () => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         
-        // Crear un flujo inicial con datos mínimos
+        // Verificar si hay flujos guardados
+        const savedFlowIds = persistenceService.listSavedFlowIds();
+        
+        if (savedFlowIds.length > 0) {
+          logger.debug('Flujos guardados encontrados:', savedFlowIds);
+          // Cargar el primer flujo guardado
+          const savedFlow = persistenceService.loadFlow(savedFlowIds[0]);
+          
+          if (savedFlow) {
+            logger.success('Cargando flujo guardado:', savedFlowIds[0]);
+            
+            // SOLUCIÓN: Verificar consistencia entre flujo y posiciones
+            verifyStorageConsistency(savedFlow);
+            
+            dispatch({ type: 'SET_CURRENT_FLOW', payload: savedFlow });
+            
+            // Esperar un momento para asegurar que la renderización se complete
+            setTimeout(() => {
+              dispatch({ type: 'SET_LOADING', payload: false });
+            }, 50);
+            
+            return; // No es necesario crear uno nuevo
+          }
+        }
+        
+        // No hay flujos guardados o no se pudo cargar, crear uno nuevo
+        logger.debug('No se encontraron flujos guardados, creando uno nuevo');
         const initialFlow = new Flow({
-          name: 'My Flow', 
-          description: 'Auto-created flow',
+          name: 'Mi Flujo', 
+          description: 'Flujo creado automáticamente',
           nodes: [],
           connections: [] 
         });
-        console.log('✅ Flow object created directly:', initialFlow);
         
         // Guardar usando el servicio
-        console.log('🔧 Calling flowService.saveFlow...');
         await flowService.saveFlow(initialFlow);
-        console.log('✅ Flow saved successfully');
+        
+        // También persistir en localStorage
+        persistenceService.saveFlow(initialFlow);
+        logger.success('Flujo guardado exitosamente en memoria y localStorage');
         
         // Actualizar el estado con el flujo creado
         dispatch({ type: 'SET_CURRENT_FLOW', payload: initialFlow });
-        console.log('✅ Initial flow set as current');
       } catch (error) {
-        console.error('❌ Error creating initial flow:', error);
-        console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace available');
-        dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
+        logger.error('Error al inicializar flujo:', error);
+        dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Error desconocido' });
       } finally {
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
     
-    createInitialFlow();
-  }, [flowService]);
+    initializeFlow();
+  }, [flowService, persistenceService, verifyStorageConsistency]);
 
   const actions = {
     createFlow: useCallback(async (name: string, description = '') => {
-      console.log('🔧 FlowContext.createFlow called with:', { name, description });
+      logger.debug('FlowContext.createFlow called with:', { name, description });
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
-        console.log('🔧 Calling flowService.createFlow...');
+        logger.debug('Calling flowService.createFlow...');
         const flow = await flowService.createFlow({ name, description });
-        console.log('✅ FlowService returned flow:', flow);
+        logger.success('FlowService returned flow:', flow);
         dispatch({ type: 'SET_CURRENT_FLOW', payload: flow });
         console.log('✅ Flow set as current flow');
       } catch (error) {
@@ -429,12 +472,50 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
     }, [flowService, state.currentFlow]),
 
     removeNode: useCallback(async (nodeId: string) => {
-      if (!state.currentFlow) return;
+      if (!state.currentFlow) {
+        console.error('❌ No hay flujo actual para eliminar nodo');
+        return;
+      }
+      
+      console.log('🚀 Iniciando eliminación del nodo:', nodeId, 'del flujo:', state.currentFlow.id);
       
       try {
-        await flowService.removeNode(state.currentFlow.id, nodeId);
-        dispatch({ type: 'REMOVE_NODE', payload: nodeId });
+        // Verificar que el nodo existe
+        const nodeExists = state.currentFlow.nodes.some(node => node.id === nodeId);
+        
+        if (!nodeExists) {
+          console.warn('⚠️ El nodo a eliminar no existe en el estado:', nodeId);
+          
+          // ANTI-FANTASMAS: Actualizar el estado de todas formas para eliminar referencias fantasma
+          console.log('🧹 Actualizando el estado para eliminar cualquier referencia persistente');
+          dispatch({ type: 'REMOVE_NODE', payload: nodeId });
+          return;
+        }
+        
+        console.log('✅ El nodo existe, procediendo con la eliminación');
+        
+        // PASO 1: Asegurar que el flujo esté actualizado en el repositorio
+        try {
+          await flowService.saveFlow(state.currentFlow);
+          console.log('✅ Flujo sincronizado en repositorio antes de eliminar nodo');
+        } catch (syncError) {
+          console.warn('⚠️ No se pudo sincronizar el flujo:', syncError);
+          // Continuar con la eliminación de todas formas
+        }
+        
+        // PASO 2: Eliminar el nodo del servicio
+        try {
+          await flowService.removeNode(state.currentFlow.id, nodeId);
+          console.log('✅ Nodo eliminado del servicio, actualizando UI');
+          dispatch({ type: 'REMOVE_NODE', payload: nodeId });
+        } catch (removeError) {
+          // Si falla la eliminación del nodo en el servicio, eliminar solo en la UI
+          console.error('❌ Error al eliminar nodo del servicio, actualizando solo UI:', removeError);
+          console.log('⚠️ Eliminando nodo solo en la UI como fallback');
+          dispatch({ type: 'REMOVE_NODE', payload: nodeId });
+        }
       } catch (error) {
+        console.error('❌ Error general en removeNode:', error);
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
       }
     }, [flowService, state.currentFlow]),

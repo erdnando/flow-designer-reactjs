@@ -30,7 +30,34 @@ export class InMemoryFlowRepository implements FlowRepository {
   async getFlowById(id: string): Promise<Flow | null> {
     try {
       logger.debug('InMemoryFlowRepository.getFlowById called with id:', id);
-      const flow = this.flows.get(id) || null;
+      
+      // Buscar primero en memoria
+      let flow = this.flows.get(id) || null;
+      
+      // MEJORA: Si no se encuentra en memoria, intentar cargarlo desde localStorage
+      if (!flow) {
+        logger.warn('Flujo no encontrado en memoria, intentando cargar desde localStorage:', id);
+        
+        try {
+          // Importar dinámicamente el servicio de persistencia
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const FlowPersistenceService = require('../../infrastructure/services/FlowPersistenceService').FlowPersistenceService;
+          const persistenceService = new FlowPersistenceService();
+          
+          // Intentar cargar desde localStorage
+          flow = persistenceService.loadFlow(id);
+          
+          // Si se encontró, guardarlo en memoria para futuras consultas
+          if (flow) {
+            logger.success('Flujo recuperado desde localStorage:', id);
+            this.flows.set(id, flow);
+          }
+        } catch (loadError) {
+          logger.error('Error al intentar cargar flujo desde localStorage:', loadError);
+          // Continuar con flow = null
+        }
+      }
+      
       logger.debug('Flow found:', !!flow);
       return flow;
     } catch (error) {

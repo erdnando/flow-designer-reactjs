@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
 import type { NodeData, NodeType } from '../../../shared/types';
 import { NODE_TYPES } from '../../../shared/constants';
 import './FlowNode.css';
@@ -54,10 +54,88 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
   const nodeConfig = NODE_TYPES[data.nodeType] || LOCAL_NODE_TYPES[data.nodeType];
   console.log('🔧 FlowNode config for', data.nodeType, ':', nodeConfig);
   
+  // Manejo de eliminación directo a ReactFlow
+  const reactFlowInstance = useReactFlow();
+  
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    data.onNodeDelete?.(id);
-  }, [data, id]);
+    e.preventDefault(); // Prevenir cualquier evento predeterminado
+    console.log('🗑️ Eliminando nodo (método directo):', id);
+    
+    // Primero ocultar el nodo visualmente para feedback inmediato
+    const nodeElement = document.querySelector(`[data-id="${id}"]`) as HTMLElement;
+    if (nodeElement) {
+      nodeElement.style.opacity = '0.3';
+      nodeElement.style.transform = 'scale(0.9)';
+      nodeElement.style.transition = 'all 0.2s ease-out';
+    }
+    
+    // Mejorar la sincronización entre ReactFlow UI y el estado del contexto
+    try {
+      // Primero intentar sincronizar el estado a través del contexto
+      if (data.onNodeDelete) {
+        console.log('🔄 Llamando al método onNodeDelete para sincronizar estado');
+        try {
+          // Ejecutar en contexto - Prioridad máxima
+          data.onNodeDelete(id);
+          console.log('✅ Estado sincronizado correctamente');
+        } catch (contextError) {
+          console.error('❌ Error al sincronizar estado:', contextError);
+          // Continuar para actualizar la UI incluso si falla la sincronización
+        }
+      } else {
+        console.warn('⚠️ No hay método onNodeDelete disponible para sincronizar estado');
+      }
+
+      // ANTI-FANTASMAS: Siempre actualizar la UI, incluso si falla la sincronización del estado
+      console.log('🔄 Actualizando UI para eliminar el nodo visualmente');
+      
+      // Forzar actualización inmediata de la UI con doble operación
+      // Paso 1: Marcar el nodo como eliminado pero manteniéndolo (para efectos visuales)
+      reactFlowInstance.setNodes((nodes) => 
+        nodes.map(node => node.id === id 
+          ? { 
+              ...node, 
+              style: { ...node.style, opacity: 0.3 }, 
+              data: { 
+                ...node.data, 
+                config: { 
+                  ...node.data.config, 
+                  _deletionInProgress: true 
+                } 
+              } 
+            }
+          : node
+        )
+      );
+      
+      // Paso 2: Eliminación real después de una breve animación visual
+      setTimeout(() => {
+        reactFlowInstance.setNodes((nodes) => {
+          const filteredNodes = nodes.filter(node => node.id !== id);
+          console.log(`✅ Nodo eliminado de la UI: ${nodes.length} -> ${filteredNodes.length} nodos`);
+          
+          // Forzar refresh completo del canvas para asegurar actualización visual
+          setTimeout(() => {
+            reactFlowInstance.fitView({ duration: 10, padding: 0.1 });
+          }, 50);
+          
+          return filteredNodes;
+        });
+      }, 20);
+    } catch (error) {
+      console.error('❌ Error al eliminar nodo:', error);
+      
+      // Último recurso: Intentar solo actualizar la UI
+      try {
+        reactFlowInstance.setNodes((nodes) => nodes.filter(node => node.id !== id));
+        console.log('✅ Nodo eliminado de la UI (método de emergencia)');
+      } catch (uiError) {
+        console.error('❌ Error crítico al eliminar nodo:', uiError);
+        alert('Ocurrió un error al eliminar el nodo. Por favor, intenta de nuevo.');
+      }
+    }
+  }, [data, id, reactFlowInstance]);
 
   const renderHandles = () => {
     const handles = [];
@@ -220,19 +298,42 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
       {renderHandles()}
       {renderNodeContent()}
 
-      {/* Delete button */}
-      {selected && (
-        <button
-          className="flow-node__delete"
-          onClick={handleDelete}
-          title="Eliminar nodo"
-          style={{
-            transform: nodeConfig.shape === 'diamond' ? 'rotate(-45deg)' : 'none'
-          }}
-        >
-          ×
-        </button>
-      )}
+      {/* Delete button - MEJORADO: Siempre visible y más clickeable */}
+      <button
+        className="flow-node__delete flow-node__delete--visible"
+        onClick={handleDelete}
+        title="Eliminar nodo"
+        style={{
+          transform: nodeConfig.shape === 'diamond' ? 'rotate(-45deg)' : 'none',
+          opacity: selected ? 1 : 0.7, // Más visible incluso cuando no está seleccionado
+          transition: 'all 0.2s ease',
+          pointerEvents: 'all', // Siempre permitir clics
+          backgroundColor: selected ? 'rgba(239, 68, 68, 0.9)' : 'rgba(239, 68, 68, 0.7)', // Rojo más visible
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: '16px',
+          width: '22px',
+          height: '22px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '50%',
+          border: '2px solid white',
+          boxShadow: '0 0 3px rgba(0,0,0,0.3)'
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.opacity = '1';
+          e.currentTarget.style.transform = nodeConfig.shape === 'diamond' ? 'rotate(-45deg) scale(1.1)' : 'scale(1.1)';
+          e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 1)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.opacity = selected ? '1' : '0.7';
+          e.currentTarget.style.transform = nodeConfig.shape === 'diamond' ? 'rotate(-45deg)' : 'none';
+          e.currentTarget.style.backgroundColor = selected ? 'rgba(239, 68, 68, 0.9)' : 'rgba(239, 68, 68, 0.7)';
+        }}
+      >
+        ×
+      </button>
 
       {/* Labels para nodo IF */}
       {data.nodeType === 'if' && (

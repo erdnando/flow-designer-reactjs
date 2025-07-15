@@ -36,15 +36,22 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
     onConnect,
     onDrop,
     onDragOver,
-    isLoading
+    isLoading,
+    selectNode
   } = useFlowDesigner();
 
   const { fitView } = useReactFlow();
 
+  // Controlador para seleccionar nodo al hacer clic
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+    // Asegurar la selección explícita del nodo
+    selectNode(node.id);
+  }, [selectNode]);
+
   const handlePaneClick = useCallback(() => {
     // Deseleccionar nodos al hacer click en el canvas vacío
-    // Esta funcionalidad se puede agregar más tarde
-  }, []);
+    selectNode(null);
+  }, [selectNode]);
 
   const onInit = useCallback(() => {
     // Ajustar vista inicial
@@ -74,6 +81,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         onDragOver={onDragOver}
         onPaneClick={handlePaneClick}
         onInit={onInit}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         deleteKeyCode="Delete"

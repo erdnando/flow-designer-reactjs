@@ -2,6 +2,7 @@ import type { Node } from '../../domain/entities/Node';
 import type { Connection } from '../../domain/entities/Connection';
 import type { Edge } from 'reactflow';
 import { getNodeHandlers, isValidHandle } from '../../shared/constants/nodeHandlers';
+import { useNotificationHelpers } from './useNotificationHelpers';
 
 // Tipo para los parámetros de conexión de ReactFlow
 interface ConnectParams {
@@ -24,6 +25,7 @@ interface ConnectionValidationResult {
  * Implementa las reglas definidas en flow-connection-rules.md
  */
 export const useConnectionValidation = () => {
+  const { showConnectionError, showConnectionSuccess } = useNotificationHelpers();
   
   /**
    * Obtiene el ID del nodo origen de una conexión
@@ -89,25 +91,33 @@ export const useConnectionValidation = () => {
     // REGLA 1: No permitir conexiones circulares (al mismo nodo)
     if (sourceId === targetId) {
       console.error('❌ Conexión circular detectada');
-      return { valid: false, message: "No se permiten conexiones a sí mismo" };
+      const message = "No se permiten conexiones a sí mismo";
+      showConnectionError(message);
+      return { valid: false, message };
     }
     
     // REGLA 2: Los nodos END no pueden tener conexiones salientes
     if (sourceNode.type === 'end') {
       console.error('❌ Los nodos END no pueden tener salidas');
-      return { valid: false, message: "Los nodos de fin no pueden tener conexiones salientes" };
+      const message = "Los nodos de fin no pueden tener conexiones salientes";
+      showConnectionError(message);
+      return { valid: false, message };
     }
     
     // REGLA 3: Los nodos START no pueden tener conexiones entrantes
     if (targetNode.type === 'start') {
       console.error('❌ Los nodos START no pueden tener entradas');
-      return { valid: false, message: "No se puede conectar a un nodo de inicio" };
+      const message = "No se puede conectar a un nodo de inicio";
+      showConnectionError(message);
+      return { valid: false, message };
     }
     
     // REGLA 4: Verificar compatibilidad de tipos de nodos
     if (!areTypesCompatible(sourceNode.type, targetNode.type)) {
       console.error('❌ Tipos de nodos incompatibles');
-      return { valid: false, message: `Los nodos ${sourceNode.type} no pueden conectarse a nodos ${targetNode.type}` };
+      const message = `Los nodos ${sourceNode.type} no pueden conectarse a nodos ${targetNode.type}`;
+      showConnectionError(message);
+      return { valid: false, message };
     }
     
     // Extraer identificadores de manejo de conexión
@@ -135,7 +145,9 @@ export const useConnectionValidation = () => {
       // Nodos IF: verificar que el handle sea 'true' o 'false'
       if (!sourceHandlerId || !['true', 'false'].includes(sourceHandlerId)) {
         console.error('❌ Handle de IF inválido');
-        return { valid: false, message: "Los nodos IF solo pueden usar handles 'true' o 'false'" };
+        const message = "Los nodos IF solo pueden usar handles 'true' o 'false'";
+        showConnectionError(message);
+        return { valid: false, message };
       }
     }
     
@@ -149,7 +161,9 @@ export const useConnectionValidation = () => {
     
     if (existingOutputs.length > 0) {
       console.error('❌ El handle ya tiene una conexión');
-      return { valid: false, message: "Este punto de salida ya tiene una conexión" };
+      const message = "Este punto de salida ya tiene una conexión";
+      showConnectionError(message);
+      return { valid: false, message };
     }
     
     // REGLA 7: Verificar límites de conexiones entrantes
@@ -168,7 +182,9 @@ export const useConnectionValidation = () => {
       
       if (existingInputs.length > 0) {
         console.error('❌ El nodo ya tiene una entrada');
-        return { valid: false, message: "Este nodo ya tiene una conexión entrante" };
+        const message = "Este nodo ya tiene una conexión entrante";
+        showConnectionError(message);
+        return { valid: false, message };
       }
     } else {
       // Nodos END pueden tener múltiples conexiones entrantes
@@ -177,6 +193,7 @@ export const useConnectionValidation = () => {
     
     // Si llegamos aquí, la conexión es válida
     console.log('✅ Conexión válida');
+    showConnectionSuccess();
     return { valid: true };
   };
 
@@ -315,10 +332,51 @@ export const useConnectionValidation = () => {
     }
   };
 
+  /**
+   * Valida que no haya más de un nodo START y un nodo END en el flujo
+   */
+  const validateUniqueNodes = (nodes: Node[], newNodeType?: string): { valid: boolean; message?: string } => {
+    const startNodes = nodes.filter(node => node.type === 'start');
+    const endNodes = nodes.filter(node => node.type === 'end');
+    
+    // Si estamos agregando un nuevo nodo, simulamos su adición
+    if (newNodeType) {
+      if (newNodeType === 'start') {
+        if (startNodes.length >= 1) {
+          const message = "Solo puede haber un nodo START en el flujo";
+          showConnectionError(message);
+          return { valid: false, message };
+        }
+      } else if (newNodeType === 'end') {
+        if (endNodes.length >= 1) {
+          const message = "Solo puede haber un nodo END en el flujo";
+          showConnectionError(message);
+          return { valid: false, message };
+        }
+      }
+    } else {
+      // Validación del estado actual
+      if (startNodes.length > 1) {
+        const message = `Se encontraron ${startNodes.length} nodos START. Solo puede haber uno`;
+        showConnectionError(message);
+        return { valid: false, message };
+      }
+      
+      if (endNodes.length > 1) {
+        const message = `Se encontraron ${endNodes.length} nodos END. Solo puede haber uno`;
+        showConnectionError(message);
+        return { valid: false, message };
+      }
+    }
+    
+    return { valid: true };
+  };
+
   return {
     isConnectionValid,
     isValidConnectionPoint,
     getConnectionHelpMessage,
+    validateUniqueNodes,
     areTypesCompatible
   };
 };

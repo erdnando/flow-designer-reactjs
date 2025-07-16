@@ -3,12 +3,12 @@
   width: 100% !important;
   height: 100% !important;
   position: relative !important;
-  background-color: #2a2a2a !important; /* Color gris oscuro */
+  background-color: #90a2b3 !important; /* Fondo claro y moderno */
   background-image: 
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.07) 1px, transparent 0) !important;
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.3) 1px, transparent 0) !important;
   background-size: 20px 20px !important;
   overflow: hidden !important;
-  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.03) !important;
   /* Prevenir el comportamiento de arrastre del navegador */
   -webkit-user-drag: none !important;
 }
@@ -30,12 +30,12 @@
   z-index: 1000 !important; /* Asegurar que esté por encima de todo */
 }
 
-/* Animación para las líneas de conexión */
+/* Animación para las líneas de conexión - Ciclo completo para mejor efecto visual */
 @keyframes dashdraw {
-  from {
-    stroke-dashoffset: 10;
+  0% {
+    stroke-dashoffset: 32;
   }
-  to {
+  100% {
     stroke-dashoffset: 0;
   }
 }
@@ -59,31 +59,32 @@
   z-index: 1000;
 }
 
-/* Estilos para el fondo oscuro */
+/* Estilos para el fondo claro */
 .react-flow__controls {
-  background-color: rgba(22, 27, 34, 0.9);
+  background-color: rgba(255, 255, 255, 0.95);
   border-radius: 8px;
   padding: 6px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .react-flow__controls button {
-  background-color: rgba(30, 34, 42, 0.95);
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  background-color: rgba(255, 255, 255, 0.95);
+  color: rgba(55, 65, 81, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   margin: 3px;
   transition: all 0.2s ease;
   border-radius: 4px;
 }
 
 .react-flow__controls button:hover {
-  background-color: rgba(59, 130, 246, 0.8);
+  background-color: rgba(59, 130, 246, 0.9);
+  color: white;
   border-color: rgba(59, 130, 246, 0.9);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .react-flow__panel.react-flow__attribution {
@@ -92,10 +93,10 @@
 }
 
 .react-flow__minimap {
-  background-color: rgba(30, 34, 42, 0.8);
+  background-color: rgba(255, 255, 255, 0.9);
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .react-flow__minimap-mask {
@@ -105,8 +106,8 @@
 }
 
 .react-flow__minimap-node {
-  fill: rgba(40, 44, 52, 0.9);
-  stroke: rgba(255, 255, 255, 0.3);
+  fill: rgba(71, 85, 105, 0.2);
+  stroke: rgba(71, 85, 105, 0.4);
   stroke-width: 1px;
 }
 
@@ -115,20 +116,19 @@
   z-index: 5;
 }
 
-.react-flow__edge-path {
-  stroke-width: 2;
-  stroke: rgba(148, 163, 184, 0.8);
-  stroke-dasharray: none !important; /* Aseguramos que no haya línea punteada */
-}
+/* REGLA PRINCIPAL - No duplicar */
+/* .react-flow__edge-path se define más abajo */
 
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke: #3b82f6;
-  stroke-width: 3;
+.react-flow .react-flow__renderer .react-flow__edges .react-flow__edge.selected .react-flow__edge-path {
+  stroke: #575755 !important; /* Naranja vibrante para elementos seleccionados */
+  stroke-width: 4 !important;
+  stroke-dasharray: 12 8 !important; /* Línea punteada más grande para seleccionadas */
+  animation: dashdraw 1.5s linear infinite !important; /* Animación más lenta */
 }
 
 .react-flow__edge-text {
   font-size: 10px;
-  fill: white;
+  fill: #374151;
 }
 
 .react-flow__node.dragging .flow-node {
@@ -260,33 +260,50 @@
   background: transparent !important;
 }
 
+/* Forzar animación en todas las líneas */
+.react-flow {
+  --edge-stroke-dasharray: 10 6 !important; 
+  --edge-animation: dashdraw 2s linear infinite !important;
+}
+
 .react-flow__edge {
   cursor: pointer !important;
 }
 
 .react-flow__edge:hover {
-  stroke-width: 3px !important;
+  /* Solo resaltamos la conexión sin cambiar el patrón punteado */
+  stroke-width: 4px !important;
+}
+
+/* Ya no necesitamos cambiar el patrón en hover ya que todas las líneas tienen animación */
+.react-flow .react-flow__renderer .react-flow__edges .react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 4 !important;
+  /* Mantenemos el mismo patrón punteado pero aumentamos grosor */
 }
 
 .react-flow__edge.selected {
-  stroke-width: 3px !important;
-  stroke: #3b82f6 !important;
+  stroke-width: 4px !important;
+  stroke: #f97316 !important; /* Naranja vibrante para selección */
 }
 
-.react-flow__connection-line {
-  stroke: #3b82f6 !important;
-  stroke-width: 2 !important;
-  stroke-dasharray: none !important;
+.react-flow .react-flow__connection-line {
+  stroke: #1d4ed8 !important;
+  stroke-width: 3 !important;
+  stroke-dasharray: 10 6 !important; /* Línea punteada durante arrastre */
   stroke-linejoin: round !important;
   stroke-linecap: round !important;
+  animation: dashdraw 2s linear infinite !important; /* Animación durante arrastre */
 }
 
-/* Forzar curvas en todas las conexiones */
-.react-flow__edge-path {
+/* Forzar curvas en todas las conexiones con alta especificidad para prevenir sobrescritura */
+.react-flow .react-flow__renderer .react-flow__edges .react-flow__edge .react-flow__edge-path {
   fill: none !important;
-  stroke-dasharray: none !important;
+  stroke-dasharray: 10 6 !important; /* Línea punteada animada */
   stroke-linejoin: round !important;
   stroke-linecap: round !important;
+  stroke-width: 3 !important;
+  stroke: #2563eb !important;
+  animation: dashdraw 2s linear infinite !important; /* Animación más lenta para ser visible */
 }
 
 /* Estos estilos de controles no se aplican debido a los estilos anteriores, los eliminamos para evitar conflictos */
@@ -325,11 +342,11 @@
 */
 
 .react-flow__minimap {
-  background: rgba(13, 17, 23, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
   border-radius: 8px !important;
   overflow: hidden !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
 }
 
 .react-flow__minimap-mask {
@@ -339,8 +356,14 @@
 }
 
 .react-flow__minimap-node {
-  fill: rgba(40, 44, 52, 0.9) !important;
-  stroke: rgba(255, 255, 255, 0.3) !important;
+  fill: rgba(71, 85, 105, 0.2) !important;
+  stroke: rgba(71, 85, 105, 0.4) !important;
+}
+
+/* Asegurar que las conexiones siempre tengan el efecto de línea punteada */
+svg.react-flow__edges path {
+  stroke-dasharray: 10 6 !important;
+  animation: dashdraw 2s linear infinite !important;
 }
 
 /* Panel personalizado */

@@ -5,6 +5,7 @@ import type { Connection } from '../../domain/entities/Connection';
 import { FlowService } from '../../application/services/FlowService';
 import { InMemoryFlowRepository } from '../../infrastructure/repositories/InMemoryFlowRepository';
 import { FlowPersistenceService } from '../../infrastructure/services/FlowPersistenceService';
+import { useNotificationHelpers } from '../hooks/useNotificationHelpers';
 import { logger } from '../../shared/utils';
 
 interface FlowState {
@@ -212,6 +213,7 @@ interface FlowProviderProps {
 export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
   logger.debug('FlowProvider: Component initializing...');
   const [state, dispatch] = useReducer(flowReducer, initialState);
+  const { showWarning } = useNotificationHelpers();
   
   // Inicializar servicios
   const persistenceService = useMemo(() => new FlowPersistenceService(), []);
@@ -389,6 +391,31 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
       console.log('🔧 Current flow exists:', !!currentState.currentFlow);
       console.log('🔧 Current flow ID:', currentState.currentFlow?.id);
       
+      // VALIDACIÓN: Verificar nodos únicos antes de agregar
+      if (currentState.currentFlow) {
+        const existingNodes = currentState.currentFlow.nodes || [];
+        
+        // Verificar si ya existe un nodo START y se está intentando agregar otro
+        if (type === 'start') {
+          const existingStartNodes = existingNodes.filter(node => node.type === 'start');
+          if (existingStartNodes.length >= 1) {
+            console.error('❌ Cannot add more than one START node');
+            showWarning('Nodo duplicado', 'Solo puede haber un nodo START en el flujo');
+            return;
+          }
+        }
+        
+        // Verificar si ya existe un nodo END y se está intentando agregar otro
+        if (type === 'end') {
+          const existingEndNodes = existingNodes.filter(node => node.type === 'end');
+          if (existingEndNodes.length >= 1) {
+            console.error('❌ Cannot add more than one END node');
+            showWarning('Nodo duplicado', 'Solo puede haber un nodo END en el flujo');
+            return;
+          }
+        }
+      }
+      
       // Verificar si hay un flujo actual
       if (!currentState.currentFlow) {
         console.error('❌ No current flow available in addNode');
@@ -471,7 +498,7 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
           dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
         }
       }
-    }, [flowService, state, dispatch]),
+    }, [flowService, state, dispatch, showWarning]),
 
     updateNode: useCallback(async (nodeId: string, updates: Partial<Node>) => {
       if (!state.currentFlow) return;

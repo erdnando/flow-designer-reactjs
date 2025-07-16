@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { useReactFlow, useNodesState, useEdgesState } from 'reactflow';
 import { useFlowContext } from '../context/FlowContext';
+import { useConnectionValidation } from './useConnectionValidation';
 import type { FlowNode, FlowEdge, NodeType } from '../../shared/types';
 import { NODE_TYPES } from '../../shared/constants';
 import { PositionPersistenceService } from '../../infrastructure/services/PositionPersistenceService';
@@ -191,6 +192,7 @@ const handleNodeDeletion = async (
 export const useFlowDesigner = () => {
   const { state, actions } = useFlowContext();
   const { project } = useReactFlow();
+  const { isConnectionValid, getConnectionHelpMessage } = useConnectionValidation();
   
   // Servicio de persistencia de posiciones
   const positionPersistence = useMemo(() => new PositionPersistenceService(), []);
@@ -1034,6 +1036,22 @@ export const useFlowDesigner = () => {
       return;
     }
     
+    // NUEVA VALIDACIÓN: Verificar si la conexión es válida según las reglas de negocio
+    if (state.currentFlow) {
+      const validationResult = isConnectionValid(
+        params,
+        state.currentFlow.nodes,
+        state.currentFlow.connections
+      );
+      
+      if (!validationResult.valid) {
+        logger.error('❌ Conexión rechazada por validación:', validationResult.message);
+        // TODO: Mostrar mensaje al usuario
+        alert(`Conexión no válida: ${validationResult.message}`);
+        return;
+      }
+    }
+    
     // Log completo para depurar
     logger.debug('🔌 Connection details:', {
       source: params.source,
@@ -1105,7 +1123,7 @@ export const useFlowDesigner = () => {
     
     // Ejecutar la creación con manejo de errores
     createConnectionAndForceRender();
-  }, [actions, setEdges, state.currentFlow, initialEdges]);
+  }, [actions, setEdges, state.currentFlow, initialEdges, isConnectionValid]);
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -1364,6 +1382,38 @@ export const useFlowDesigner = () => {
       logger.info('Cleared persisted positions for current flow');
     }
   }, [positionPersistence, state.currentFlow]);
+
+  // Función para validar conexiones en tiempo real (durante el arrastre)
+  const isValidConnection = useCallback((connection: any) => {
+    logger.debug('🔍 Validando conexión durante arrastre:', connection);
+    
+    if (!connection.source || !connection.target) {
+      logger.debug('❌ Conexión inválida: falta source o target');
+      return false;
+    }
+    
+    // Usar el sistema de validación
+    if (state.currentFlow) {
+      const validationResult = isConnectionValid(
+        connection,
+        state.currentFlow.nodes,
+        state.currentFlow.connections
+      );
+      
+      if (!validationResult.valid) {
+        logger.debug('❌ Conexión inválida durante arrastre:', validationResult.message);
+        return false;
+      }
+    }
+    
+    logger.debug('✅ Conexión válida durante arrastre');
+    return true;
+  }, [state.currentFlow, isConnectionValid]);
+
+  // Función para obtener ayuda sobre conexiones
+  const getConnectionHelp = useCallback((sourceNodeType: string, targetNodeType: string, handleType: 'source' | 'target') => {
+    return getConnectionHelpMessage(sourceNodeType, targetNodeType, handleType);
+  }, [getConnectionHelpMessage]);
   
   // Efecto para persistir posiciones cuando hay cambios en los nodos
   useEffect(() => {
@@ -1412,11 +1462,13 @@ export const useFlowDesigner = () => {
     onConnectEnd,
     onDrop,
     onDragOver,
+    isValidConnection,
     
     // Funciones de utilidad
     getNodeTypeConfig,
     getPersistenceStats,
     clearPersistedPositions,
+    getConnectionHelp,
     
     // Acciones
     addNode: actions.addNode,

@@ -60,7 +60,8 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
     onDrop,
     onDragOver,
     isLoading,
-    selectNode
+    selectNode,
+    isValidConnection
   } = useFlowDesigner();
 
   const { fitView } = useReactFlow();
@@ -154,6 +155,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         connectionMode={ConnectionMode.Loose}
         deleteKeyCode="Delete"
         multiSelectionKeyCode="Control"
+        isValidConnection={isValidConnection}
         defaultEdgeOptions={{
           type: 'smoothbezier', // Usar nuestro tipo personalizado con curvas más suaves
           animated: false,

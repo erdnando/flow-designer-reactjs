@@ -1,0 +1,152 @@
+/* Estilos para handlers predefinidos */
+.flow-node__handle {
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  z-index: 10;
+  cursor: crosshair;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Sobrescribir estilos por defecto de ReactFlow para eliminar círculos negros */
+.react-flow__handle {
+  border: 2px solid white !important;
+  width: 14px !important;
+  height: 14px !important;
+  background: none !important;
+}
+
+.flow-node__handle:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Handlers de entrada - Forma cuadrada para diferenciar */
+.flow-node__handle--input,
+.react-flow__handle.flow-node__handle--input {
+  background: #2196F3 !important;
+  border-color: #1565C0 !important;
+  border-radius: 2px !important; /* Cuadrado para entradas */
+}
+
+.flow-node__handle--input:hover {
+  background: #1976D2 !important;
+  border-color: #0D47A1 !important;
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.8);
+}
+
+/* Handlers de salida - Forma circular para diferenciar */
+.flow-node__handle--output,
+.react-flow__handle.flow-node__handle--output {
+  background: #4CAF50 !important;
+  border-color: #2E7D32 !important;
+  border-radius: 50% !important; /* Circular para salidas */
+}
+
+.flow-node__handle--output:hover {
+  background: #388E3C !important;
+  border-color: #1B5E20 !important;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+}
+
+/* Handlers específicos para IF */
+.flow-node__handle--true,
+.react-flow__handle.flow-node__handle--true {
+  background: #4CAF50 !important;
+  border-color: #2E7D32 !important;
+  border-radius: 50% !important;
+}
+
+.flow-node__handle--true:hover {
+  background: #388E3C !important;
+  border-color: #1B5E20 !important;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+}
+
+.flow-node__handle--false,
+.react-flow__handle.flow-node__handle--false {
+  background: #F44336 !important;
+  border-color: #C62828 !important;
+  border-radius: 50% !important;
+}
+
+.flow-node__handle--false:hover {
+  background: #D32F2F !important;
+  border-color: #B71C1C !important;
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.8);
+}
+
+/* Remover los handlers por tipo específico para evitar duplicados - heredan estilos base */
+
+/* Estados especiales para validación */
+.flow-node__handle--valid {
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+}
+
+.flow-node__handle--invalid {
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.6);
+  opacity: 0.5;
+}
+
+/* Animaciones para feedback visual */
+@keyframes pulse-valid {
+  0% { box-shadow: 0 0 8px rgba(76, 175, 80, 0.6); }
+  50% { box-shadow: 0 0 15px rgba(76, 175, 80, 0.8); }
+  100% { box-shadow: 0 0 8px rgba(76, 175, 80, 0.6); }
+}
+
+@keyframes pulse-invalid {
+  0% { box-shadow: 0 0 8px rgba(244, 67, 54, 0.6); }
+  50% { box-shadow: 0 0 15px rgba(244, 67, 54, 0.8); }
+  100% { box-shadow: 0 0 8px rgba(244, 67, 54, 0.6); }
+}
+
+.flow-node__handle--valid:hover {
+  animation: pulse-valid 1s infinite;
+}
+
+.flow-node__handle--invalid:hover {
+  animation: pulse-invalid 1s infinite;
+}
+
+/* REMOVER completamente los tooltips de texto */
+.flow-node__handle[title]:hover::after,
+.flow-node__handle::after {
+  display: none !important;
+}
+
+/* Eliminar cualquier tooltip o texto que pueda aparecer */
+.flow-node__handle * {
+  display: none !important;
+}
+
+/* Asegurar que ReactFlow no muestre handlers por defecto */
+.react-flow__handle {
+  background: transparent !important;
+  border: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Solo mostrar nuestros handlers personalizados */
+.flow-node__handle {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Sobrescribir estilos por defecto de ReactFlow */
+.react-flow__handle-top,
+.react-flow__handle-bottom,
+.react-flow__handle-left,
+.react-flow__handle-right {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Estilos específicos para evitar círculos negros */
+.flow-node__handle.react-flow__handle {
+  background: inherit;
+  border: inherit;
+}

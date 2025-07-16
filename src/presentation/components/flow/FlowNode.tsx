@@ -2,7 +2,9 @@ import React, { useCallback } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
 import type { NodeData, NodeType } from '../../../shared/types';
 import { NODE_TYPES } from '../../../shared/constants';
+import { getNodeHandlers, HANDLER_STYLES } from '../../../shared/constants/nodeHandlers';
 import './FlowNode.css';
+import './FlowNodeHandlers.css';
 
 interface FlowNodeData extends NodeData {
   nodeType: NodeType;
@@ -121,88 +123,52 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
     setTimeout(() => {
       document.body.style.cursor = '';
     }, 1000);
-  }, []);
-
-  const renderHandles = () => {
-    const handles = [];
+  }, []);  const renderHandles = () => {
+    const handles: React.ReactElement[] = [];
+    const nodeHandlers = getNodeHandlers(data.nodeType);
     
-    // Input handle (si es permitido)
-    if (nodeConfig.allowedInputs > 0) {
+    console.log(`🔌 Renderizando handles para nodo ${data.nodeType}:`, nodeHandlers);
+    
+    // Renderizar handlers de entrada
+    nodeHandlers.inputs.forEach(handler => {
+      const position = handler.position.charAt(0).toUpperCase() + handler.position.slice(1);
       handles.push(
         <Handle
-          key="input"
+          key={handler.id}
           type="target"
-          position={Position.Left}
-          id="input"
-          className="flow-node__handle flow-node__handle--input"
+          position={Position[position as keyof typeof Position]}
+          id={handler.id}
+          className={`flow-node__handle flow-node__handle--input flow-node__handle--${handler.id}`}
           onMouseDown={handleConnectionStart}
           style={{ 
-            left: -8,
-            backgroundColor: nodeConfig.color,
-            border: '2px solid white',
-            cursor: 'crosshair' // Cursor especial para indicar creación de conexión
+            ...handler.style,
+            cursor: 'crosshair',
+            borderRadius: '2px' // Cuadrado para entradas
           }}
         />
       );
-    }
-
-    // Output handles basado en el tipo de nodo
-    if (data.nodeType === 'if') {
-      // Nodo IF con dos outputs (Sí/No)
+    });
+    
+    // Renderizar handlers de salida
+    nodeHandlers.outputs.forEach(handler => {
+      const position = handler.position.charAt(0).toUpperCase() + handler.position.slice(1);
       handles.push(
         <Handle
-          key="output-true"
+          key={handler.id}
           type="source"
-          position={Position.Bottom}
-          id="true"
-          className="flow-node__handle flow-node__handle--output flow-node__handle--true"
+          position={Position[position as keyof typeof Position]}
+          id={handler.id}
+          className={`flow-node__handle flow-node__handle--output flow-node__handle--${handler.id}`}
           onMouseDown={handleConnectionStart}
           style={{ 
-            bottom: -8,
-            left: '25%',
-            backgroundColor: '#10b981',
-            border: '2px solid white',
-            cursor: 'crosshair'
+            ...handler.style,
+            cursor: 'crosshair',
+            borderRadius: '50%' // Circular para salidas
           }}
         />
       );
-      handles.push(
-        <Handle
-          key="output-false"
-          type="source"
-          position={Position.Bottom}
-          id="false"
-          className="flow-node__handle flow-node__handle--output flow-node__handle--false"
-          onMouseDown={handleConnectionStart}
-          style={{ 
-            bottom: -8,
-            right: '25%',
-            backgroundColor: '#ef4444',
-            border: '2px solid white',
-            cursor: 'crosshair'
-          }}
-        />
-      );
-    } else if (nodeConfig.allowedOutputs === 1) {
-      // Un solo output handle
-      handles.push(
-        <Handle
-          key="output"
-          type="source"
-          position={Position.Right}
-          id="output"
-          className="flow-node__handle flow-node__handle--output"
-          onMouseDown={handleConnectionStart}
-          style={{ 
-            right: -8,
-            backgroundColor: nodeConfig.color,
-            border: '2px solid white',
-            cursor: 'crosshair'
-          }}
-        />
-      );
-    }
-
+    });
+    
     return handles;
   };
 

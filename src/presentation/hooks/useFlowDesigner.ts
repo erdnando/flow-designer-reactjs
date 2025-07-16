@@ -349,7 +349,7 @@ export const useFlowDesigner = () => {
     
     logger.success('Converted edges:', converted);
     return converted;
-  }, [state.currentFlow]);
+  }, [state.currentFlow]); // CORRECCIÓN: Mantener dependencia completa para asegurar recálculo
 
   // Usar ReactFlow's state management para nodes y edges
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -638,42 +638,112 @@ export const useFlowDesigner = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes]);
 
-  // Sincronizar edges cuando el estado cambie
+  // Sincronizar edges cuando el estado cambie - MEJORADO PARA CONEXIONES INMEDIATAS
   useEffect(() => {
-    if (isSyncingRef.current) {    logger.debug('Already syncing, skipping edges sync');
-    return;
-  }
-
-  logger.debug('Syncing edges with state...');
-  logger.debug('Current edges count:', edges.length);
-  logger.debug('Initial edges count:', initialEdges.length);
-  
-  // Crear una firma única para los edges iniciales
-  const initialEdgesSignature = JSON.stringify(
-    initialEdges.map(e => ({ id: e.id, source: e.source, target: e.target }))
-  );
-  
-  logger.debug('Last synced edges signature:', lastSyncedEdgesRef.current);
-  logger.debug('Current initial edges signature:', initialEdgesSignature);
-  
-  // Solo sincronizar si la firma ha cambiado
-  if (lastSyncedEdgesRef.current !== initialEdgesSignature) {
-    logger.info('Edge signature changed, syncing...');
+    logger.debug('Syncing edges with state...');
+    logger.debug('Current edges count:', edges.length);
+    logger.debug('Initial edges count:', initialEdges.length);
+    logger.debug('Is syncing:', isSyncingRef.current);
+    
+    // Crear una firma única para los edges iniciales
+    const initialEdgesSignature = JSON.stringify(
+      initialEdges.map(e => ({ id: e.id, source: e.source, target: e.target }))
+    );
+    
+    logger.debug('Last synced edges signature:', lastSyncedEdgesRef.current);
+    logger.debug('Current initial edges signature:', initialEdgesSignature);
+    
+    // CORRECCIÓN CRÍTICA: Solo saltear si estamos sincronizando Y las firmas son iguales
+    // Esto permite que las conexiones nuevas se procesen inmediatamente
+    if (isSyncingRef.current && lastSyncedEdgesRef.current === initialEdgesSignature) {
+      logger.debug('Already syncing same edges, skipping');
+      return;
+    }
+    
+    // Solo sincronizar si la firma ha cambiado
+    if (lastSyncedEdgesRef.current !== initialEdgesSignature) {
+      logger.info('Edge signature changed, syncing...');
       
       isSyncingRef.current = true;
       
+      // CORRECCIÓN: Asegurar que la actualización sea inmediata y visible
       setEdges(initialEdges);
       lastSyncedEdgesRef.current = initialEdgesSignature;
       
-      // Liberar el lock después de un breve delay
+      // Forzar una actualización adicional después de un breve delay
+      // para asegurar que ReactFlow renderice correctamente
       setTimeout(() => {
+        logger.debug('🔄 Forzando segunda actualización de edges para garantizar renderización');
+        setEdges(currentEdges => {
+          // Comparar con el estado actual para asegurar consistencia
+          const currentSignature = JSON.stringify(
+            currentEdges.map(e => ({ id: e.id, source: e.source, target: e.target }))
+          );
+          
+          if (currentSignature !== initialEdgesSignature) {
+            logger.debug('🔄 Detectada inconsistencia, aplicando edges iniciales nuevamente');
+            return initialEdges;
+          }
+          
+          return currentEdges;
+        });
+        
+        // Liberar el lock después de asegurar la consistencia
         isSyncingRef.current = false;
-      }, 100);
+      }, 50);
     } else {
       logger.debug('Edges signature unchanged, skipping');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialEdges, setEdges]);
+
+  // NUEVO: Efecto específico para detectar conexiones que faltan en la renderización
+  useEffect(() => {
+    // Solo ejecutar si tenemos datos válidos
+    if (!state.currentFlow) {
+      return;
+    }
+
+    const domainConnections = state.currentFlow.connections?.length || 0;
+    const renderedEdges = edges.length;
+    
+    logger.debug(`🔍 Verificando renderización: ${domainConnections} conexiones en dominio vs ${renderedEdges} edges renderizados`);
+    
+    // Detectar discrepancia entre conexiones del dominio y edges renderizados
+    if (domainConnections > renderedEdges) {
+      logger.warn(`🔍 DETECCIÓN DE RENDERIZACIÓN: ${domainConnections} conexiones en dominio vs ${renderedEdges} edges renderizados`);
+      
+      // CORRECCIÓN CRÍTICA: No verificar isSyncingRef aquí para permitir actualizaciones forzadas
+      // Forzar actualización inmediata
+      const forcedUpdate = setTimeout(() => {
+        logger.info('🔄 Forzando actualización de edges por discrepancia detectada');
+        
+        // Desactivar sincronización temporalmente para permitir la actualización
+        const wasSyncing = isSyncingRef.current;
+        isSyncingRef.current = false;
+        
+        // Aplicar edges directamente desde el estado del dominio
+        setEdges(initialEdges);
+        
+        // Forzar segunda actualización para asegurar renderización
+        setTimeout(() => {
+          setEdges(currentEdges => {
+            const shouldUpdate = currentEdges.length !== initialEdges.length;
+            if (shouldUpdate) {
+              logger.debug('🔄 Aplicando segunda actualización forzada');
+              return initialEdges;
+            }
+            return currentEdges;
+          });
+          
+          // Restaurar estado de sincronización
+          isSyncingRef.current = wasSyncing;
+        }, 100);
+      }, 25); // Reducir el delay para mayor velocidad
+      
+      return () => clearTimeout(forcedUpdate);
+    }
+  }, [state.currentFlow, edges.length, initialEdges, setEdges]);
 
   // INTERCEPTOR NUCLEAR - Bloquear TODOS los cambios de posición no autorizados
   const handleNodesChange = useCallback((changes: any[]) => {
@@ -978,18 +1048,64 @@ export const useFlowDesigner = () => {
     // Restaurar el cursor inmediatamente cuando se conecta
     document.body.style.cursor = '';
     
-    // Prevenir problemas de carrera y sincronización
-    setTimeout(() => {
-      actions.addConnection(
-        params.source,
-        params.target,
-        params.sourceHandle,
-        params.targetHandle
-      );
-      
-      logger.success('✅ Conexión creada exitosamente');
-    }, 10);
-  }, [actions]);
+    // CORRECCIÓN CRÍTICA: Crear conexión inmediatamente y forzar renderización múltiple
+    const createConnectionAndForceRender = async () => {
+      try {
+        // Desactivar temporalmente el bloqueo de sincronización
+        isSyncingRef.current = false;
+        
+        // Crear la conexión en el dominio
+        await actions.addConnection(
+          params.source,
+          params.target,
+          params.sourceHandle,
+          params.targetHandle
+        );
+        
+        logger.success('✅ Conexión creada exitosamente');
+        
+        // ESTRATEGIA AGRESIVA: Múltiples intentos de actualización
+        // para asegurar que la conexión se renderice
+        
+        // Intento 1: Actualización inmediata
+        setTimeout(() => {
+          logger.debug('🔄 Intento 1: Forzando actualización inmediata de edges');
+          setEdges(currentEdges => {
+            const newEdges = [...currentEdges];
+            return newEdges;
+          });
+        }, 10);
+        
+        // Intento 2: Actualización con delay corto
+        setTimeout(() => {
+          logger.debug('🔄 Intento 2: Segunda actualización de edges');
+          setEdges(currentEdges => {
+            // Forzar re-renderización completa
+            return [...currentEdges];
+          });
+        }, 50);
+        
+        // Intento 3: Actualización con delay medio para asegurar renderización
+        setTimeout(() => {
+          logger.debug('🔄 Intento 3: Verificación final de edges');
+          setEdges(currentEdges => {
+            if (currentEdges.length === 0 && state.currentFlow?.connections && state.currentFlow.connections.length > 0) {
+              logger.warn('🚨 Detectado problema de renderización, forzando actualización desde dominio');
+              // Forzar actualización desde el estado del dominio
+              return initialEdges;
+            }
+            return currentEdges;
+          });
+        }, 100);
+        
+      } catch (error) {
+        logger.error('❌ Error al crear conexión:', error);
+      }
+    };
+    
+    // Ejecutar la creación con manejo de errores
+    createConnectionAndForceRender();
+  }, [actions, setEdges, state.currentFlow, initialEdges]);
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();

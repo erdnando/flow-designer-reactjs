@@ -549,8 +549,18 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
           targetHandle: targetHandle || 'input'
         });
         console.log('✅ Connection created:', connection);
+        
+        // CORRECCIÓN: Dispatch inmediato para actualizar el estado
         dispatch({ type: 'ADD_CONNECTION', payload: connection });
         console.log('✅ Connection dispatched to reducer');
+        
+        // Forzar re-renderización inmediata del estado
+        setTimeout(() => {
+          // Crear un pequeño cambio en el estado para forzar re-renderización
+          // sin afectar la funcionalidad
+          dispatch({ type: 'SET_LOADING', payload: false });
+        }, 10);
+        
       } catch (error) {
         console.error('❌ Error in addConnection:', error);
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });

@@ -1,0 +1,56 @@
+/* Estilos para prevenir la aparición de la imagen fantasma durante el arrastre */
+* {
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  /* user-drag is a non-standard property, only use vendor prefixes */
+}
+
+/* Estilos específicos para elementos arrastrables */
+[draggable="true"] {
+  /* Permitir arrastre para elementos draggable */
+  -webkit-user-drag: element !important;
+  -khtml-user-drag: element !important;
+  -moz-user-drag: element !important;
+}
+
+/* Al arrastrar, hacemos invisible la imagen fantasma */
+[draggable="true"]:active {
+  opacity: 0.7 !important;
+}
+
+/* Clase especial para cuando estamos en modo de conexión */
+body.connecting {
+  cursor: crosshair !important;
+}
+
+body.connecting * {
+  cursor: crosshair !important;
+}
+
+/* Mejorar la visualización de los handles durante la conexión */
+.react-flow__handle[data-connecting="true"] {
+  transform: scale(1.5) !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.7), 0 0 15px rgba(59, 130, 246, 0.7) !important;
+}
+
+/* Evitar la imagen fantasma en arrastres y conexiones */
+.react-flow__edges {
+  pointer-events: none;
+}
+
+.react-flow__handle {
+  pointer-events: all;
+}
+
+/* Clase específica para evitar el arrastre fantasma */
+.react-flow__handle::after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  top: -10px;
+  bottom: -10px;
+  /* Aumentar el área para facilitar el clic */
+}

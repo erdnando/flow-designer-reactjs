@@ -49,10 +49,30 @@ export const CANVAS_CONFIG = {
   NODE_HEIGHT: 80,
   CONNECTION_STROKE_WIDTH: 2,
   HANDLE_SIZE: 12,
-  SNAP_GRID: true,
+  SNAP_GRID: false,
   BACKGROUND_PATTERN: 'dots' as const,
   MINIMAP_HEIGHT: 120,
-  CONTROLS_POSITION: 'bottom-left' as const
+  CONTROLS_POSITION: 'bottom-left' as const,
+  // Nuevas configuraciones para conexiones con curvas suaves
+  CONNECTION_LINE: {
+    TYPE: 'custom', // Usamos nuestro componente personalizado
+    STROKE: '#3b82f6',  // Color azul para la línea de conexión
+    STROKE_WIDTH: 2,
+    STROKE_DASHARRAY: '',  // Línea continua como en la imagen 1
+    ANIMATION: false,
+    CURVATURE: 0.95 // Alta curvatura para líneas más curvas
+  },
+  // Configuración específica para las conexiones ya creadas
+  EDGE_OPTIONS: {
+    TYPE: 'smoothbezier', // Usamos nuestro tipo personalizado
+    ANIMATED: false,    // Sin animación
+    STYLE: {
+      STROKE: '#3b82f6', // Mantenemos el color azul como solicitaste
+      STROKE_WIDTH: 2,
+      STROKE_DASHARRAY: '', // Línea continua para el estilo de la imagen 1
+      CURVATURE: 0.8 // Alta curvatura para líneas más curvas
+    }
+  }
 };
 
 export const DRAG_TYPES = {

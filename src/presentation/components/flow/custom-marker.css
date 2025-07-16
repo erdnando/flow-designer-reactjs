@@ -1,0 +1,47 @@
+/* Custom marker styling for edges */
+.react-flow__edge path {
+  stroke-dasharray: none;
+  animation: none;
+}
+
+/* Estilos específicos para el marcador de flecha */
+.react-flow__arrowhead {
+  fill: #3b82f6;
+}
+
+.react-flow__edge.selected {
+  stroke: #ff3b30;
+  stroke-width: 3;
+}
+
+/* Add a custom circle marker at the end of the connection line */
+.react-flow__edge .react-flow__edge-path {
+  marker-end: url(#edgeend);
+}
+
+/* Make the edges a bit more visible */
+.react-flow__handle {
+  background: #ff3b30;
+  width: 8px;
+  height: 8px;
+  border: 1px solid #7c2522;
+}
+
+.react-flow__edge-path {
+  stroke: #ff3b30;
+}
+
+/* Styling for animated edges */
+@keyframes flowAnimation {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.react-flow__edge-path {
+  stroke-dasharray: 5, 5;
+  animation: flowAnimation 1s linear infinite;
+}

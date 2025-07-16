@@ -72,3 +72,4 @@ export * from './globalInit';
 
 // Exportar el logger
 export * from './logger';
+export * from './dragDropDebugger';

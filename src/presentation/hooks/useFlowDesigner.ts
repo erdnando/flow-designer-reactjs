@@ -335,8 +335,8 @@ export const useFlowDesigner = () => {
         target: connection.targetNodeId,
         sourceHandle: connection.sourceHandle || undefined,
         targetHandle: connection.targetHandle || undefined,
-        type: 'smoothstep' as const,
-        animated: true,
+        type: 'smoothbezier' as const,
+        animated: false,
         style: {
           stroke: connection.style?.stroke || '#94a3b8',
           strokeWidth: connection.style?.strokeWidth || 2
@@ -915,47 +915,178 @@ export const useFlowDesigner = () => {
     });
   }, [onEdgesChange, actions]);
 
+  // Event handlers para prevenir el efecto de arrastre fantasma
+  const onConnectStart = useCallback((event: any, params: any) => {
+    // Cuando inicia la conexión, eliminar cualquier imagen de arrastre
+    const nodeId = params?.nodeId || 'unknown';
+    const handleId = params?.handleId || 'unknown';
+    const handleType = params?.handleType || 'unknown';
+    
+    logger.debug('🔌 Connection start detected:', { nodeId, handleId, handleType });
+    
+    // Remover cualquier efecto de arrastre existente
+    document.body.classList.add('connecting');
+    
+    // Cambiar el cursor global durante la conexión
+    document.body.style.cursor = 'crosshair';
+    
+    // Añadir una clase especial para CSS
+    const allElements = document.querySelectorAll('.react-flow__handle');
+    allElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        // Usar atributos de datos en lugar de propiedades no estándar
+        el.setAttribute('data-connecting', 'true');
+      }
+    });
+  }, []);
+
+  const onConnectEnd = useCallback((event: any) => {
+    // Restaurar el cursor y remover la clase cuando termina la conexión
+    logger.debug('🔌 Connection end detected');
+    document.body.classList.remove('connecting');
+    document.body.style.cursor = '';
+    
+    // Restaurar elementos
+    const allElements = document.querySelectorAll('.react-flow__handle');
+    allElements.forEach(el => {
+      if (el instanceof HTMLElement) {
+        // Limpiar atributos de datos
+        el.removeAttribute('data-connecting');
+      }
+    });
+  }, []);
+
   const onConnect = useCallback((params: any) => {
-    logger.debug('onConnect called with params:', params);
+    logger.debug('⚡ onConnect called with params:', params);
     
     if (!params.source || !params.target) {
-      logger.error('Missing source or target in connection params');
+      logger.error('❌ Missing source or target in connection params');
       return;
     }
     
     // Log completo para depurar
-    logger.debug('Connection details:', {
+    logger.debug('🔌 Connection details:', {
       source: params.source,
       sourceHandle: params.sourceHandle,
       target: params.target,
       targetHandle: params.targetHandle
     });
+
+    // Mostrar feedback visual antes de crear la conexión real
+    logger.success('✅ Creando conexión entre nodos:', params.source, '->', params.target);
     
-    actions.addConnection(
-      params.source,
-      params.target,
-      params.sourceHandle,
-      params.targetHandle
-    );
+    // Restaurar el cursor inmediatamente cuando se conecta
+    document.body.style.cursor = '';
+    
+    // Prevenir problemas de carrera y sincronización
+    setTimeout(() => {
+      actions.addConnection(
+        params.source,
+        params.target,
+        params.sourceHandle,
+        params.targetHandle
+      );
+      
+      logger.success('✅ Conexión creada exitosamente');
+    }, 10);
   }, [actions]);
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation(); // Detener la propagación para evitar conflictos
     
-    const nodeType = event.dataTransfer.getData('application/reactflow');
-    logger.debug('Drop detected! NodeType:', nodeType);
+    // Registrar todos los tipos de datos disponibles
+    logger.debug('Available data types:', event.dataTransfer.types);
     
+    // Intentar obtener nodeType con múltiples estrategias
+    let nodeType: string | null = null;
+    
+    // Estrategia 1: Intenta obtener de application/reactflow
+    try {
+      nodeType = event.dataTransfer.getData('application/reactflow');
+      logger.debug('Strategy 1 - application/reactflow:', nodeType);
+    } catch (e) {
+      logger.warn('Error getting application/reactflow data:', e);
+    }
+    
+    // Estrategia 2: Intenta obtener de text/plain
     if (!nodeType) {
-      logger.warn('No nodeType found in dataTransfer');
-      // Intenta extraer el tipo del evento si no está en dataTransfer
-      const element = event.target as HTMLElement;
-      const nodeTypeAttribute = element.getAttribute('data-node-type');
-      if (nodeTypeAttribute) {
-        logger.debug('Found nodeType in data attribute:', nodeTypeAttribute);
-        return;
+      try {
+        nodeType = event.dataTransfer.getData('text/plain');
+        logger.debug('Strategy 2 - text/plain:', nodeType);
+      } catch (e) {
+        logger.warn('Error getting text/plain data:', e);
       }
-      return;
+    }
+    
+    // Estrategia 3: Intenta obtener de formato simple nodeType
+    if (!nodeType) {
+      try {
+        nodeType = event.dataTransfer.getData('nodeType');
+        logger.debug('Strategy 3 - nodeType format:', nodeType);
+      } catch (e) {
+        logger.warn('Error getting nodeType data:', e);
+      }
+    }
+    
+    // Estrategia 4: Buscar elementos en el DOM con data-node-type
+    if (!nodeType) {
+      try {
+        const dragElements = document.querySelectorAll('[data-node-type]');
+        if (dragElements.length > 0) {
+          // Convertir NodeList a array para iterar de forma segura
+          Array.from(dragElements).forEach(el => {
+            const dataType = el.getAttribute('data-node-type');
+            if (dataType && !nodeType) {
+              nodeType = dataType;
+              logger.debug('Strategy 4 - Found from DOM elements:', nodeType);
+            }
+          });
+        }
+      } catch (e) {
+        logger.warn('Error getting nodeType from DOM:', e);
+      }
+    }
+    
+    // Estrategia 5: Revisar en localStorage como último recurso
+    if (!nodeType) {
+      try {
+        nodeType = localStorage.getItem('dragging-node-type');
+        logger.debug('Strategy 5 - localStorage fallback:', nodeType);
+        // Limpiar después de usar
+        if (nodeType) {
+          localStorage.removeItem('dragging-node-type');
+        }
+      } catch (e) {
+        logger.warn('Error accessing localStorage:', e);
+      }
+    }
+    
+    // Estrategia 6: Detectar elementos visibles que están siendo arrastrados
+    if (!nodeType) {
+      try {
+        const paletteItems = document.querySelectorAll('.node-palette__item');
+        Array.from(paletteItems).forEach(item => {
+          if (item instanceof HTMLElement && item.style.opacity === '0.5' && !nodeType) {
+            // Este elemento probablemente está siendo arrastrado
+            const type = item.getAttribute('data-node-type');
+            if (type) {
+              nodeType = type;
+              logger.debug('Strategy 6 - Found from opacity check:', nodeType);
+            }
+          }
+        });
+      } catch (e) {
+        logger.warn('Error in strategy 6:', e);
+      }
+    }
+    
+    // Comprobación final
+    if (!nodeType) {
+      // SOLUCIÓN TEMPORAL: Si todo falla, usar un tipo por defecto
+      nodeType = 'step'; // Usar un tipo válido como fallback
+      logger.warn('⚠️ No se pudo detectar el tipo de nodo, usando tipo por defecto:', nodeType);
+      // return; // Descomentar para cancelar si no se encuentra ningún tipo
     }
 
     // Obtener la posición relativa al canvas de ReactFlow
@@ -1003,8 +1134,30 @@ export const useFlowDesigner = () => {
     logger.debug('Calling addNode with:', { nodeType, position: adjustedPosition });
     
     try {
+      // Clean up any visual indicators
+      const flowElement = document.querySelector('.react-flow');
+      if (flowElement && flowElement.classList.contains('drop-target')) {
+        flowElement.classList.remove('drop-target');
+      }
+      
+      // Reset cursor
+      document.body.style.cursor = '';
+      document.body.classList.remove('node-dragging');
+
+      // Add the node
       actions.addNode(nodeType, adjustedPosition);
       logger.success('addNode called successfully');
+      
+      // Show visual feedback of success
+      setTimeout(() => {
+        // Flash the canvas briefly to indicate success
+        if (flowElement) {
+          flowElement.classList.add('drop-success');
+          setTimeout(() => {
+            flowElement.classList.remove('drop-success');
+          }, 300);
+        }
+      }, 10);
       
       // Persistir la posición del nuevo nodo
       if (state.currentFlow) {
@@ -1014,20 +1167,66 @@ export const useFlowDesigner = () => {
       }
     } catch (error) {
       logger.error('Error in addNode:', error);
+      
+      // Show visual feedback of error
+      const flowElement = document.querySelector('.react-flow');
+      if (flowElement) {
+        flowElement.classList.add('drop-error');
+        setTimeout(() => {
+          flowElement.classList.remove('drop-error');
+        }, 300);
+      }
     }
   }, [actions, project, nodes, state.currentFlow]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation(); // Detener la propagación para evitar conflictos
-    event.dataTransfer.dropEffect = 'move';
     
-    // Cambiar el cursor para dar retroalimentación visual
+    // Asegurar que se muestre el efecto de "copiar" en lugar de "mover"
+    event.dataTransfer.dropEffect = 'copy';
+    
+    // Cambiar el cursor para dar retroalimentación visual clara
     if (event.currentTarget instanceof HTMLElement) {
       event.currentTarget.style.cursor = 'copy';
+      
+      // Añadir clase de resaltado al objetivo de soltar
+      const flowElement = document.querySelector('.react-flow');
+      if (flowElement && !flowElement.classList.contains('drop-target')) {
+        flowElement.classList.add('drop-target');
+        
+        // Asegurar que también se añada la clase al viewport interno
+        const viewport = document.querySelector('.react-flow__viewport');
+        if (viewport) {
+          viewport.classList.add('drop-target-viewport');
+        }
+      }
     }
     
-    logger.debug('Drag over canvas');
+    // Verificar si tenemos datos válidos en cualquier formato
+    const validTypes = ['application/reactflow', 'text/plain', 'nodeType'];
+    let hasValidData = false;
+    
+    try {
+      for (const type of validTypes) {
+        if (event.dataTransfer.types.includes(type)) {
+          hasValidData = true;
+          break;
+        }
+      }
+      
+      // También verificar si hay algún elemento en arrastre
+      if (!hasValidData && document.body.classList.contains('node-dragging')) {
+        hasValidData = true; // Asumir que hay un arrastre válido basado en el estado del body
+      }
+    } catch (error) {
+      logger.error('Error verificando tipos de datos en onDragOver:', error);
+    }
+    
+    // Si estamos en arrastre, mostrarlo claramente en la consola
+    logger.debug('🔄 Drag over canvas, valid data:', hasValidData);
+    
+    return false; // Asegurar que el navegador maneje el evento correctamente
   }, []);
 
   const getSelectedNode = useCallback(() => {
@@ -1093,6 +1292,8 @@ export const useFlowDesigner = () => {
     onNodesChange: handleNodesChange,
     onEdgesChange: handleEdgesChange,
     onConnect,
+    onConnectStart,
+    onConnectEnd,
     onDrop,
     onDragOver,
     

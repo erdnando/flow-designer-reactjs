@@ -100,6 +100,29 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
     }
   }, [data, id, reactFlowInstance]);
 
+  // Manejador de eventos para handles de conexión
+  const handleConnectionStart = useCallback((event: React.MouseEvent) => {
+    // Detener la propagación para evitar que el canvas se mueva
+    event.stopPropagation();
+    
+    // IMPORTANTE: Prevenir el comportamiento por defecto del navegador
+    // que causa el efecto de "arrastrar imagen"
+    event.preventDefault();
+    
+    // El dataTransfer solo existiría si fuera un evento de arrastre (DragEvent)
+    // pero no es necesario en este caso ya que estamos manejando MouseEvent
+    
+    console.log('🔄 Connection handle click detected - Default drag behavior prevented');
+    
+    // Asegurar que el cursor se mantiene como crosshair durante la conexión
+    document.body.style.cursor = 'crosshair';
+    
+    // Restaurar el cursor después de un tiempo
+    setTimeout(() => {
+      document.body.style.cursor = '';
+    }, 1000);
+  }, []);
+
   const renderHandles = () => {
     const handles = [];
     
@@ -112,10 +135,12 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
           position={Position.Left}
           id="input"
           className="flow-node__handle flow-node__handle--input"
+          onMouseDown={handleConnectionStart}
           style={{ 
             left: -8,
             backgroundColor: nodeConfig.color,
-            border: '2px solid white'
+            border: '2px solid white',
+            cursor: 'crosshair' // Cursor especial para indicar creación de conexión
           }}
         />
       );
@@ -131,11 +156,13 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
           position={Position.Bottom}
           id="true"
           className="flow-node__handle flow-node__handle--output flow-node__handle--true"
+          onMouseDown={handleConnectionStart}
           style={{ 
             bottom: -8,
             left: '25%',
             backgroundColor: '#10b981',
-            border: '2px solid white'
+            border: '2px solid white',
+            cursor: 'crosshair'
           }}
         />
       );
@@ -146,11 +173,13 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
           position={Position.Bottom}
           id="false"
           className="flow-node__handle flow-node__handle--output flow-node__handle--false"
+          onMouseDown={handleConnectionStart}
           style={{ 
             bottom: -8,
             right: '25%',
             backgroundColor: '#ef4444',
-            border: '2px solid white'
+            border: '2px solid white',
+            cursor: 'crosshair'
           }}
         />
       );
@@ -163,10 +192,12 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
           position={Position.Right}
           id="output"
           className="flow-node__handle flow-node__handle--output"
+          onMouseDown={handleConnectionStart}
           style={{ 
             right: -8,
             backgroundColor: nodeConfig.color,
-            border: '2px solid white'
+            border: '2px solid white',
+            cursor: 'crosshair'
           }}
         />
       );

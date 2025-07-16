@@ -1,0 +1,62 @@
+/* 
+ * DragConnectionStyles.css
+ * Este archivo contiene estilos específicos para mejorar la apariencia
+ * de las líneas de conexión durante el proceso de arrastre
+ */
+
+/* Forzar curvas suaves en la línea de conexión durante el arrastre */
+.react-flow__connection-line {
+  stroke: #3b82f6 !important;
+  stroke-width: 2px !important;
+  fill: none !important;
+  stroke-dasharray: none !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  animation: none !important;
+  pointer-events: none !important;
+  z-index: 1000 !important;
+}
+
+/* Estilo para nuestra línea de conexión personalizada */
+.smooth-bezier-connection-path {
+  stroke: #3b82f6 !important;
+  stroke-width: 2px !important;
+  fill: none !important;
+  stroke-dasharray: none !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  pointer-events: none !important;
+}
+
+/* Sobrescribir cualquier estilo del pane que pueda interferir */
+.react-flow__pane {
+  cursor: grab;
+}
+
+/* Asegurar que el contenedor de conexiones tenga el z-index correcto */
+.react-flow__connection {
+  z-index: 1000 !important;
+  pointer-events: none !important;
+}
+
+/* Estilo para el handle mientras se está creando una conexión */
+.react-flow__handle.connecting {
+  background: #3b82f6 !important;
+  border-color: #2563eb !important;
+  z-index: 1001 !important;
+}
+
+/* Ajustar la posición de los handles para conexiones más suaves */
+.react-flow__handle {
+  transition: background-color 0.15s ease, transform 0.15s ease !important;
+}
+
+.react-flow__handle:hover {
+  background-color: #3b82f6 !important;
+  transform: scale(1.2) !important;
+}
+
+/* Estilos específicos para los estados de conexión */
+.react-flow.connection-mode {
+  cursor: crosshair !important;
+}

@@ -1,0 +1,17 @@
+/* Estilos para el componente BezierEdge */
+.react-flow__edge-path {
+  transition: stroke-width 0.2s ease-in-out, opacity 0.2s ease-in-out;
+  stroke-linecap: round; /* Extremos redondeados para las líneas */
+}
+
+/* Efecto hover para los bordes */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 2.5px;
+  opacity: 1;
+}
+
+/* Estilo para el edge activo/seleccionado */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 2.5px;
+  opacity: 1;
+}

@@ -1,19 +1,34 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from "react";
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
   NodeTypes,
   ConnectionMode,
+  ConnectionLineType,
   useReactFlow,
   Panel
 } from 'reactflow';
+import { setupDragDropDebugging } from "../../../shared/utils/dragDropDebugger";
 import 'reactflow/dist/style.css';
 
 import FlowNode from './FlowNode';
+import BezierEdge from './BezierEdge';
+import SmoothBezierEdge from './SmoothBezierEdge';
+import CustomConnectionLine from './CustomConnectionLine';
 import { useFlowDesigner } from '../../hooks/useFlowDesigner';
 import { CANVAS_CONFIG } from '../../../shared/constants';
 import './FlowCanvas.css';
+import './custom-marker.css';
+import './BezierEdge.css';  // Importamos el CSS para los edges curvos
+import './SmoothBezierEdge.css'; // CSS para nuestro nuevo componente con curvas más suaves
+import './ForceEdgeCurves.css';  // CSS para forzar curvas en todas las conexiones
+import './DragConnectionStyles.css'; // CSS específico para mejorar las líneas durante el arrastre
+// Importar estilos específicos para prevenir imagen fantasma
+import './NoGhostImage.css';
+// Importar estilos para drag and drop
+import '../ui/DragDropStyles.css';
+import './DragDropCanvas.css';
 
 // Definir tipos de nodos personalizados
 const nodeTypes: NodeTypes = {
@@ -21,6 +36,12 @@ const nodeTypes: NodeTypes = {
   step: FlowNode,
   if: FlowNode,
   end: FlowNode
+};
+
+// Definir tipos de bordes personalizados
+const edgeTypes: Record<string, React.ComponentType<any>> = {
+  bezier: BezierEdge, // Componente original para curvas
+  smoothbezier: SmoothBezierEdge // Nuestro nuevo componente con curvas más suaves
 };
 
 interface FlowCanvasProps {
@@ -34,6 +55,8 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
     onNodesChange,
     onEdgesChange,
     onConnect,
+    onConnectStart,
+    onConnectEnd,
     onDrop,
     onDragOver,
     isLoading,
@@ -41,6 +64,14 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
   } = useFlowDesigner();
 
   const { fitView } = useReactFlow();
+  
+  // Configurar las utilidades de depuración de drag & drop
+  useEffect(() => {
+    // Activar solo en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      setupDragDropDebugging();
+    }
+  }, []);
 
   // Controlador para seleccionar nodo al hacer clic
   const handleNodeClick = useCallback((event: React.MouseEvent, node: any) => {
@@ -88,29 +119,61 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
 
   return (
     <div className={`flow-canvas ${className || ''}`}>
+      {/* SVG definitions for custom markers */}
+      <svg style={{ width: 0, height: 0, position: 'absolute' }} xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker 
+            id="edgeend" 
+            viewBox="0 0 8 8" 
+            refX="4" 
+            refY="4" 
+            markerWidth="8" 
+            markerHeight="8" 
+            orient="auto">
+            <circle cx="4" cy="4" r="3" fill={CANVAS_CONFIG.EDGE_OPTIONS.STYLE.STROKE} />
+          </marker>
+        </defs>
+      </svg>
+      
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectStart={onConnectStart}
+        onConnectEnd={onConnectEnd}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onPaneClick={handlePaneClick}
         onInit={onInit}
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
         deleteKeyCode="Delete"
         multiSelectionKeyCode="Control"
         defaultEdgeOptions={{
-          type: 'smoothstep',
-          animated: true,
+          type: 'smoothbezier', // Usar nuestro tipo personalizado con curvas más suaves
+          animated: false,
           style: {
-            stroke: 'rgba(148, 163, 184, 0.8)',
-            strokeWidth: 2
-          }
+            stroke: CANVAS_CONFIG.EDGE_OPTIONS.STYLE.STROKE,
+            strokeWidth: CANVAS_CONFIG.EDGE_OPTIONS.STYLE.STROKE_WIDTH,
+            strokeDasharray: '' // Sin línea punteada
+          },
+          // Usar un círculo en vez de una flecha como marcador de fin
+          markerEnd: 'url(#edgeend)'
         }}
+        // Usar las configuraciones del archivo constants para tener consistencia
+        connectionLineStyle={{
+          stroke: CANVAS_CONFIG.CONNECTION_LINE.STROKE,
+          strokeWidth: CANVAS_CONFIG.CONNECTION_LINE.STROKE_WIDTH,
+          strokeDasharray: '', // Forzar línea continua
+          // Asegurar que no se muestre el efecto de arrastre del navegador
+          pointerEvents: 'none'
+        }}
+        // Usar nuestro componente personalizado para la línea de conexión durante el arrastre
+        connectionLineComponent={CustomConnectionLine}
         snapToGrid={CANVAS_CONFIG.SNAP_GRID}
         snapGrid={[CANVAS_CONFIG.GRID_SIZE, CANVAS_CONFIG.GRID_SIZE]}
         fitView
@@ -118,52 +181,11 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         proOptions={{
           hideAttribution: true
         }}
-        // Asegurar que los nodos sean arrastrables
-        draggable={true}
-        // Agregar configuración adicional para el arrastre
-        nodesDraggable={true}
-        nodesConnectable={true}
-        elementsSelectable={true}
-        // Ajustar configuraciones para facilitar la interacción
-        preventScrolling={false}
-        nodeOrigin={[0.5, 0.5]}
-        // Habilitar comportamientos automáticos útiles
-        autoPanOnNodeDrag={true}
-        autoPanOnConnect={true}
-        panOnDrag={true}
-        selectionOnDrag={true}
-        // Habilitar funcionalidades de navegación
-        panOnScroll={true}
-        zoomOnPinch={true}
-        zoomOnScroll={true}
-        zoomOnDoubleClick={true}
         // Configuraciones de zoom y pan
         minZoom={CANVAS_CONFIG.ZOOM_MIN}
         maxZoom={CANVAS_CONFIG.ZOOM_MAX}
         defaultViewport={{ x: 0, y: 0, zoom: CANVAS_CONFIG.DEFAULT_ZOOM }}
-        // Evitar que ReactFlow haga ajustes automáticos
-        nodeExtent={undefined}
-        translateExtent={undefined}
-        // Desactivar algoritmos de layout automático
-        fitViewOptions={{
-          padding: 0.5, // Mayor padding para una vista más alejada
-          includeHiddenNodes: false,
-          minZoom: CANVAS_CONFIG.ZOOM_MIN,
-          maxZoom: CANVAS_CONFIG.ZOOM_MAX,
-          duration: 0 // Sin animaciones automáticas
-        }}
-        // Configuraciones adicionales para evitar movimientos automáticos
-        connectionLineStyle={{ stroke: '#94a3b8', strokeWidth: 2 }}
-        connectionLineType={'smoothstep' as any}
-        // Desactivar cualquier comportamiento de reorganización automática
-        onlyRenderVisibleElements={false}
-        // Deshabilitar comportamientos internos de ReactFlow
-        selectNodesOnDrag={false}
-        // Configuraciones de bordes para evitar ajustes automáticos
-        edgesFocusable={false}
-        edgesUpdatable={false}
       >
-        {/* Background con patrón de puntos */}
         <Background
           variant={"dots" as any}
           gap={CANVAS_CONFIG.GRID_SIZE}
@@ -171,45 +193,19 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
           color="rgba(255, 255, 255, 0.07)"
         />
 
-        {/* Controles de zoom y ajuste */}
         <Controls
           position="bottom-left"
           showZoom={true}
           showFitView={true}
           showInteractive={true}
-          style={{
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            overflow: 'hidden'
-          }}
         />
 
-        {/* Minimap */}
-        <MiniMap
+      
+         <MiniMap
           position="bottom-right"
-          style={{
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            overflow: 'hidden'
-          }}
           maskColor="rgba(0, 0, 0, 0.1)"
-          nodeColor={(node) => {
-            switch (node.type) {
-              case 'start':
-                return '#10b981';
-              case 'end':
-                return '#ef4444';
-              case 'conditional':
-                return '#f59e0b';
-              case 'custom':
-                return '#8b5cf6';
-              default:
-                return '#6b7280';
-            }
-          }}
         />
 
-        {/* Panel de información */}
         <Panel position="top-right" className="flow-canvas__info-panel">
           <div className="flow-canvas__stats">
             <span className="flow-canvas__stat">

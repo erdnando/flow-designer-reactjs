@@ -1,0 +1,100 @@
+/* Styles for drag and drop visual indicators on the canvas */
+
+/* Canvas highlighting when a draggable element is over it */
+.react-flow.drop-target {
+  outline: 3px dashed #3b82f6 !important;
+  background-color: rgba(59, 130, 246, 0.05) !important;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Viewport highlighting */
+.react-flow__viewport.drop-target-viewport {
+  box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Add animated indicator for drop target */
+.react-flow.drop-target::after {
+  content: "Drop here to add node";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 10px 20px;
+  background-color: rgba(59, 130, 246, 0.9);
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 1000;
+  animation: pulse 1.5s infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+}
+
+/* Additional style for when the body has the node-dragging class */
+body.node-dragging .react-flow:not(.drop-target) {
+  outline: 1px dashed #aaa;
+  transition: all 0.2s ease;
+}
+
+/* Change cursor for all elements during drag */
+body.node-dragging * {
+  cursor: copy !important;
+}
+
+/* Highlight handles when dragging over the canvas */
+body.node-dragging .react-flow__handle {
+  transform: scale(1.2);
+  transition: transform 0.2s ease;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Success and error indicators */
+.react-flow.drop-success {
+  animation: successful-drop 0.3s ease;
+  outline: 3px solid #10b981 !important;
+}
+
+.react-flow.drop-error {
+  animation: failed-drop 0.3s ease;
+  outline: 3px solid #ef4444 !important;
+}
+
+@keyframes successful-drop {
+  0% {
+    background-color: rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    background-color: rgba(16, 185, 129, 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes failed-drop {
+  0% {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  100% {
+    background-color: transparent;
+  }
+}

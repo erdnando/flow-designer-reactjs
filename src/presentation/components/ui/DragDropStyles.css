@@ -1,0 +1,39 @@
+/* Additional styles for drag & drop operations */
+.node-palette__item {
+  position: relative;
+  z-index: 10;
+}
+
+.node-palette__item[data-dragging="true"] {
+  opacity: 0.5;
+  outline: 2px dashed #3b82f6;
+}
+
+body.node-dragging .react-flow {
+  outline: 2px dashed #3b82f6;
+  background-color: rgba(59, 130, 246, 0.05) !important;
+  transition: all 0.2s ease;
+}
+
+/* Indicate drop area when node is being dragged */
+body.node-dragging .react-flow__renderer {
+  cursor: copy !important;
+}
+
+/* Visual helper for drop target */
+.react-flow__drop-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1000;
+  border: 2px dashed #3b82f6;
+  background-color: rgba(59, 130, 246, 0.05);
+  display: none;
+}
+
+body.node-dragging .react-flow__drop-indicator {
+  display: block;
+}

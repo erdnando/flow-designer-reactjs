@@ -1,0 +1,60 @@
+/* Estilos para forzar curvas Bezier en las conexiones */
+
+/* Forzar curvas suaves en todas las conexiones */
+.react-flow__edges g {
+  pointer-events: all;
+}
+
+.react-flow__edge {
+  pointer-events: all;
+}
+
+.react-flow__edge path.react-flow__edge-path {
+  stroke-dasharray: none !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+  fill: none !important;
+}
+
+/* Aplicar un poco de suavizado a las curvas */
+.react-flow__edge-path {
+  transition: stroke 0.3s, stroke-width 0.3s !important;
+}
+
+/* Estilos para los círculos en los extremos de las conexiones */
+.react-flow__edge-circle {
+  fill: #3b82f6 !important;
+  stroke: none !important;
+}
+
+/* Estilos para la línea de conexión mientras se está creando */
+.react-flow__connection-path {
+  stroke: #3b82f6 !important;
+  stroke-width: 2px !important;
+  fill: none !important;
+  stroke-dasharray: none !important;
+  stroke-linejoin: round !important;
+  stroke-linecap: round !important;
+}
+
+/* Estilo específico para la nueva edge de bezier suave */
+.smooth-bezier-path {
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  stroke-width: 2px !important;
+  fill: none !important;
+}
+
+/* Estilo para la línea de conexión personalizada mientras se arrastra */
+.smooth-bezier-connection-path {
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  stroke-width: 2px !important;
+  fill: none !important;
+  transition: stroke 0.3s ease !important;
+}
+
+/* Aumentar la curvatura de las conexiones */
+.react-flow__edge .react-flow__edge-path {
+  transition: all 0.3s ease !important;
+}

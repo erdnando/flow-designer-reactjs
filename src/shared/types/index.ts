@@ -77,7 +77,7 @@ export interface FlowEdge {
   target: string;
   sourceHandle?: string;
   targetHandle?: string;
-  type?: 'smoothstep' | 'straight' | 'step' | 'bezier';
+  type?: 'smoothstep' | 'straight' | 'step' | 'bezier' | 'smoothbezier';
   animated?: boolean;
   style?: Record<string, any>;
   data?: {

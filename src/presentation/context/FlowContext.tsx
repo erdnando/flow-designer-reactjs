@@ -370,6 +370,19 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
     addNode: useCallback(async (type: string, position: { x: number; y: number }) => {
       console.log('🔧 FlowContext.addNode called with:', { type, position });
       
+      // Validar los parámetros
+      if (!type) {
+        console.error('❌ Invalid node type:', type);
+        dispatch({ type: 'SET_ERROR', payload: 'Invalid node type' });
+        return;
+      }
+      
+      if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+        console.error('❌ Invalid position:', position);
+        position = { x: 100, y: 100 }; // Posición por defecto si es inválida
+        console.log('✅ Using default position instead:', position);
+      }
+      
       // Obtener el estado actual directamente del contexto
       const currentState = state;
       console.log('🔧 Current state in addNode:', currentState);

@@ -1,0 +1,35 @@
+/* Estilos específicos para SmoothBezierEdge */
+
+/* Path principal del edge */
+.smooth-bezier-path {
+  stroke-width: 2px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  fill: none !important;
+  transition: stroke 0.3s ease !important;
+}
+
+/* Aumentar el radio de las esquinas para curvas más suaves */
+path.smooth-bezier-path {
+  shape-rendering: geometricPrecision !important;
+}
+
+/* Asegurarse de que no hay líneas rectas en conexiones */
+.react-flow__edge.smoothbezier-edge .react-flow__edge-path {
+  stroke: #b1b1b7 !important;
+  stroke-width: 2px !important;
+  fill: none !important;
+  stroke-dasharray: none !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+/* Estilos para los estados hover y seleccionado */
+.react-flow__edge.selected .smooth-bezier-path {
+  stroke: #555 !important;
+  stroke-width: 3px !important;
+}
+
+.react-flow__edge:hover .smooth-bezier-path {
+  stroke-width: 2.5px !important;
+}

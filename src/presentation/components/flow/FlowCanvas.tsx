@@ -5,11 +5,11 @@ import ReactFlow, {
   MiniMap,
   NodeTypes,
   ConnectionMode,
-  ConnectionLineType,
   useReactFlow,
   Panel
 } from 'reactflow';
-import { setupDragDropDebugging } from "../../../shared/utils/dragDropDebugger";
+// Comentado: Utilidad de depuración para drag & drop
+// import { setupDragDropDebugging } from "../../../shared/utils/dragDropDebugger";
 import 'reactflow/dist/style.css';
 
 import FlowNode from './FlowNode';
@@ -69,7 +69,8 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
   useEffect(() => {
     // Activar solo en desarrollo
     if (process.env.NODE_ENV === 'development') {
-      setupDragDropDebugging();
+      // Comentado: Utilidad de depuración para drag & drop
+      // setupDragDropDebugging();
     }
   }, []);
 

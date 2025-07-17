@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Handle, Position, NodeProps, useNodes, useEdges } from 'reactflow';
+import { Handle, Position, NodeProps, useReactFlow, useNodes, useEdges } from 'reactflow';
 import type { NodeData, NodeType } from '../../../shared/types';
 import { NODE_TYPES } from '../../../shared/constants';
 import { getNodeHandlers } from '../../../shared/constants/nodeHandlers';
@@ -19,6 +19,7 @@ interface FlowNodeData extends NodeData {
 
 const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const reactFlowInstance = useReactFlow();
   const nodes = useNodes();
   const edges = useEdges();
   
@@ -57,6 +58,56 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false);
   }, []);
+
+  // Manejo de eliminación directo a ReactFlow (mantener compatibilidad)
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    console.log('🗑️ Eliminando nodo (método directo):', id);
+    
+    const nodeElement = document.querySelector(`[data-id="${id}"]`) as HTMLElement;
+    if (nodeElement) {
+      nodeElement.style.opacity = '0.3';
+      nodeElement.style.transform = 'scale(0.9)';
+      nodeElement.style.transition = 'all 0.2s ease-out';
+    }
+    
+    try {
+      if (data.onNodeDelete) {
+        data.onNodeDelete(id);
+      }
+      
+      reactFlowInstance.setNodes((nodes) => 
+        nodes.map(node => node.id === id 
+          ? { 
+              ...node, 
+              style: { ...node.style, opacity: 0.3 }, 
+              data: { 
+                ...node.data, 
+                config: { 
+                  ...node.data.config, 
+                  _deletionInProgress: true 
+                } 
+              } 
+            }
+          : node
+        )
+      );
+      
+      setTimeout(() => {
+        reactFlowInstance.setNodes((nodes) => {
+          const filteredNodes = nodes.filter(node => node.id !== id);
+          setTimeout(() => {
+            reactFlowInstance.fitView({ duration: 10, padding: 0.1 });
+          }, 50);
+          return filteredNodes;
+        });
+      }, 20);
+    } catch (error) {
+      console.error('❌ Error al eliminar nodo:', error);
+    }
+  }, [data, id, reactFlowInstance]);
 
   // Manejador de eventos para handles de conexión
   const handleConnectionStart = useCallback((event: React.MouseEvent) => {
@@ -208,12 +259,49 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
       {/* Contenido del nodo */}
       {renderNodeContent()}
 
-      {/* Etiqueta del nodo - Ahora fuera del nodo principal */}
+      {/* Etiqueta del nodo */}
       <div className="flow-node__label-container">
         <div className="flow-node__label">
           {data.label || nodeConfig.label}
         </div>
       </div>
+
+      {/* Botón de eliminar (mantener compatibilidad) */}
+      <button
+        className="flow-node__delete flow-node__delete--visible"
+        onClick={handleDelete}
+        title="Eliminar nodo"
+        style={{
+          transform: nodeConfig.shape === 'diamond' ? 'rotate(-45deg)' : 'none',
+          opacity: selected ? 1 : 0.7,
+          transition: 'all 0.2s ease',
+          pointerEvents: 'all',
+          backgroundColor: selected ? 'rgba(239, 68, 68, 0.9)' : 'rgba(239, 68, 68, 0.7)',
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: '16px',
+          width: '22px',
+          height: '22px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '50%',
+          border: '2px solid white',
+          boxShadow: '0 0 3px rgba(0,0,0,0.3)'
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.opacity = '1';
+          e.currentTarget.style.transform = nodeConfig.shape === 'diamond' ? 'rotate(-45deg) scale(1.1)' : 'scale(1.1)';
+          e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 1)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.opacity = selected ? '1' : '0.7';
+          e.currentTarget.style.transform = nodeConfig.shape === 'diamond' ? 'rotate(-45deg)' : 'none';
+          e.currentTarget.style.backgroundColor = selected ? 'rgba(239, 68, 68, 0.9)' : 'rgba(239, 68, 68, 0.7)';
+        }}
+      >
+        ×
+      </button>
 
       {/* Labels para nodo IF */}
       {data.nodeType === 'if' && (

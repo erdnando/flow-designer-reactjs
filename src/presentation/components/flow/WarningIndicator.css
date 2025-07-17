@@ -1,0 +1,56 @@
+/* Warning Indicator Styles */
+.warning-indicator {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: rgba(245, 158, 11, 0.9);
+  border-radius: 50%;
+  border: 1px solid rgba(251, 191, 36, 0.8);
+  color: #7b341e;
+  z-index: 10;
+  animation: pulse 2s infinite;
+  cursor: help;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.warning-indicator:hover {
+  transform: scale(1.1);
+  background: rgba(245, 158, 11, 1);
+  animation: none;
+}
+
+/* Adaptación para nodos diamante */
+.flow-node--diamond .warning-indicator {
+  transform: rotate(-45deg);
+  bottom: 6px;
+  right: 6px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .warning-indicator {
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+  }
+}

@@ -1,0 +1,49 @@
+/* Node Icon Styles */
+.node-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.node-icon:hover {
+  transform: scale(1.05);
+  border-color: currentColor;
+}
+
+/* Tipos específicos de nodos */
+.node-icon--start {
+  border-radius: 50%;
+}
+
+.node-icon--end {
+  border-radius: 4px;
+}
+
+.node-icon--step {
+  border-radius: 6px;
+}
+
+.node-icon--if {
+  border-radius: 50%;
+  transform: rotate(-45deg);
+}
+
+.node-icon--if:hover {
+  transform: rotate(-45deg) scale(1.05);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .node-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+}

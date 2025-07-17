@@ -1,75 +1,175 @@
-/* Base styles */
+/* Base styles - Nuevo diseño */
 .flow-node {
-  background: rgba(40, 44, 52, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  cursor: grab; /* Cambiado a grab para indicar que es arrastrable */
+  background: #2d3748;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  cursor: grab;
   position: relative;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease-in-out;
   overflow: visible;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  user-select: none; /* Previene la selección de texto durante el arrastre */
-  touch-action: none; /* Mejora el comportamiento táctil */
+  padding: 16px;
+  min-width: 120px;
+  min-height: 80px;
+  user-select: none;
+  touch-action: none;
   backdrop-filter: blur(5px);
-  color: white;
+  color: #f8f9fa;
 }
 
 .flow-node:hover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
 }
 
 .flow-node:active {
-  cursor: grabbing; /* Cambia a grabbing durante el arrastre activo */
-}
-
-/* Cambiar cursor durante el arrastre activo */
-.react-flow__node-default.dragging .flow-node {
   cursor: grabbing;
 }
 
+.flow-node.dragging {
+  cursor: grabbing;
+}
+
+/* Estado seleccionado */
 .flow-node--selected {
-  border-width: 1.5px;
-  border-color: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.15);
+  /* Borde naranja para resaltar que está seleccionado */
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* Rectangle nodes (STEP) */
-.react-flow__node .flow-node--rectangle,
+/* Texto del nombre en bold cuando el nodo está seleccionado */
+.flow-node--selected .flow-node__label {
+  font-weight: bold;
+}
+
+/* Estado de advertencia */
+.flow-node--warning {
+  border-color: #f6ad55;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Contenido del nodo */
+.flow-node__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 8px;
+  position: relative;
+}
+
+.flow-node__content--diamond {
+  transform: rotate(-45deg);
+  width: 60px;
+  height: 60px;
+}
+
+.flow-node__icon {
+  margin-bottom: 4px;
+}
+
+/* Contenedor y etiqueta del nodo */
+.flow-node__label-container {
+  position: absolute;
+  bottom: -23px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  width: max-content;
+  display: flex;
+  justify-content: center;
+}
+
+.flow-node__label {
+  font-size: 9px;
+  font-weight: 500;
+  text-align: center;
+  color: #f8f9fa;
+  background: rgba(45, 55, 72, 0.9);
+  padding: 2px 18px;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: inline-block;
+  margin: 0 auto;
+}
+
+/* Adaptación para nodos diamante */
+.flow-node--diamond .flow-node__label-container {
+  bottom: -25px;
+}
+
+.flow-node--diamond .flow-node__label {
+  transform: rotate(-45deg);
+}
+
+/* Tipos específicos de nodos */
 .flow-node--rectangle {
-  min-width: 60px !important;
-  min-height: 40px !important;
-  border-radius: 6px !important;
-  padding: 8px !important;
-  background-color: #3a3a3a !important;
-  border: 1px solid #3b82f6 !important;
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 8px;
+  min-width: 140px;
+  min-height: 60px;
 }
 
-/* Circle nodes (START, END) */
-.react-flow__node .flow-node--circle,
 .flow-node--circle {
-  width: 60px !important;
-  height: 60px !important;
-  border-radius: 50% !important;
-  padding: 0 !important;
-  background-color: #3a3a3a !important;
-  border: 1px solid #10b981 !important;
-  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 8px;
 }
 
-/* Diamond nodes (IF) */
-.react-flow__node .flow-node--diamond,
 .flow-node--diamond {
-  width: 50px !important;
-  height: 50px !important;
-  border-radius: 4px !important;
-  transform: rotate(45deg) !important;
-  padding: 0 !important;
-  background-color: #3a3a3a !important;
-  border: 1px solid #f59e0b !important;
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3), 0 4px 10px rgba(0, 0, 0, 0.4) !important;
+  transform: rotate(45deg);
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+  border-radius: 8px;
+  padding: 0;
+}
+
+/* Colores por tipo de nodo */
+.flow-node--start {
+  border-color: #38a169;
+}
+
+.flow-node--start.flow-node--selected {
+  border-color: #38a169;
+  box-shadow: 0 0 0 3px rgba(251, 60, 76, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.flow-node--end {
+  border-color: #e53e3e;
+}
+
+.flow-node--end.flow-node--selected {
+  border-color: #e53e3e;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.flow-node--step {
+  border-color: #3182ce;
+}
+
+.flow-node--step.flow-node--selected {
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.flow-node--if {
+  border-color: #d69e2e;
+}
+
+.flow-node--if.flow-node--selected {
+  border-color: #d69e2e;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Mejorar los handles de conexión */
@@ -79,23 +179,85 @@
   background-color: #3b82f6 !important;
   border: 2px solid #fff !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
-  z-index: 10 !important; /* Asegurar que estén por encima del nodo */
+  z-index: 10 !important;
   transition: transform 0.2s, box-shadow 0.2s, width 0.2s, height 0.2s !important;
-  cursor: crosshair !important; /* Cursor especial para indicar creación de conexión */
-  user-select: none !important; /* Prevenir selección de texto */
-  -webkit-user-drag: none !important; /* Prevenir arrastre en Safari/Chrome */
-  -khtml-user-drag: none !important; /* Navegadores antiguos */
-  -moz-user-drag: none !important; /* Firefox */
-  -webkit-user-select: none !important; /* Safari/Chrome */
-  -ms-user-select: none !important; /* IE/Edge */
+  cursor: crosshair !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -webkit-user-select: none !important;
+  -ms-user-select: none !important;
 }
 
 .flow-node__handle:hover {
-  transform: scale(1.3) !important; /* Más grande al pasar el ratón */
+  transform: scale(1.3) !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 0 10px rgba(59, 130, 246, 0.5) !important;
   width: 14px !important;
   height: 14px !important;
-  z-index: 50 !important; /* Aumentar z-index al pasar el ratón */
+  z-index: 50 !important;
+}
+
+.flow-node__handle--input {
+  border-radius: 2px !important;
+}
+
+.flow-node__handle--output {
+  border-radius: 50% !important;
+}
+
+/* Labels para nodos IF */
+.flow-node__label--true,
+.flow-node__label--false {
+  position: absolute;
+  font-size: 10px;
+  font-weight: bold;
+  color: #f8f9fa;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 5;
+  transform: rotate(-45deg);
+}
+
+.flow-node__label--true {
+  top: -15px;
+  right: 10px;
+  color: #68d391;
+}
+
+.flow-node__label--false {
+  bottom: -15px;
+  left: 10px;
+  color: #fc8181;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .flow-node {
+    min-width: 100px;
+    min-height: 60px;
+    padding: 12px;
+  }
+  
+  .flow-node--circle {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+    min-height: 60px;
+  }
+  
+  .flow-node--diamond {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+    min-height: 60px;
+  }
+  
+  .flow-node__label {
+    font-size: 10px;
+    max-width: 48px;
+  }
 }
 
 .flow-node__handle:active {
@@ -280,35 +442,37 @@
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(239, 68, 68, 0.4);
 }
 
-/* Labels for IF node */
-.flow-node__label {
+/* Labels for IF node only */
+.flow-node__label--true {
   position: absolute;
   font-size: 8px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(50, 50, 50, 0.95);
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
   padding: 2px 4px;
   border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.6);
   z-index: 15;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   letter-spacing: 0.5px;
-}
-
-.flow-node__label--true {
   bottom: -16px;
   left: 15%;
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.6);
-  background-color: rgba(16, 185, 129, 0.15);
 }
 
 .flow-node__label--false {
+  position: absolute;
+  font-size: 8px;
+  font-weight: 600;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  z-index: 15;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
   bottom: -16px;
   right: 15%;
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.6);
-  background-color: rgba(239, 68, 68, 0.15);
 }
 
 /* Node type specific styles */

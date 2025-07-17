@@ -203,8 +203,8 @@ export const useFlowDesigner = () => {
   // Mantener las posiciones de los nodos de forma controlada
   const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
   
-  // Flag para saber si debemos forzar persistencia
-  const forcePersistenceRef = useRef<boolean>(false);
+  // TODO: Flag para saber si debemos forzar persistencia (implementar en fase posterior)
+  // const forcePersistenceRef = useRef<boolean>(false);
 
   // CORRECCIÓN: Flag para depuración
   const initialRenderCompleteRef = useRef(false);
@@ -1036,7 +1036,7 @@ export const useFlowDesigner = () => {
       return;
     }
     
-    // NUEVA VALIDACIÓN: Verificar si la conexión es válida según las reglas de negocio
+    // Validación de la conexión
     if (state.currentFlow) {
       const validationResult = isConnectionValid(
         params,
@@ -1046,13 +1046,12 @@ export const useFlowDesigner = () => {
       
       if (!validationResult.valid) {
         logger.error('❌ Conexión rechazada por validación:', validationResult.message);
-        // TODO: Mostrar mensaje al usuario
         alert(`Conexión no válida: ${validationResult.message}`);
         return;
       }
     }
     
-    // Log completo para depurar
+    // Log para depuración
     logger.debug('🔌 Connection details:', {
       source: params.source,
       sourceHandle: params.sourceHandle,
@@ -1060,17 +1059,28 @@ export const useFlowDesigner = () => {
       targetHandle: params.targetHandle
     });
 
-    // Mostrar feedback visual antes de crear la conexión real
-    logger.success('✅ Creando conexión entre nodos:', params.source, '->', params.target);
-    
-    // Restaurar el cursor inmediatamente cuando se conecta
+    // Restaurar el cursor
     document.body.style.cursor = '';
     
-    // CORRECCIÓN CRÍTICA: Crear conexión inmediatamente y forzar renderización múltiple
-    const createConnectionAndForceRender = async () => {
+    const createConnection = async () => {
       try {
-        // Desactivar temporalmente el bloqueo de sincronización
+        // Desactivar el bloqueo de sincronización temporalmente
         isSyncingRef.current = false;
+        
+        // Actualizar el estado local de ReactFlow primero
+        setEdges(eds => {
+          const newEdge = {
+            id: `${params.source}-${params.target}`,
+            source: params.source,
+            target: params.target,
+            sourceHandle: params.sourceHandle,
+            targetHandle: params.targetHandle,
+            type: 'smoothbezier',
+            animated: false,
+            style: { stroke: '#94a3b8', strokeWidth: 2 }
+          };
+          return [...eds, newEdge];
+        });
         
         // Crear la conexión en el dominio
         await actions.addConnection(
@@ -1082,47 +1092,33 @@ export const useFlowDesigner = () => {
         
         logger.success('✅ Conexión creada exitosamente');
         
-        // ESTRATEGIA AGRESIVA: Múltiples intentos de actualización
-        // para asegurar que la conexión se renderice
-        
-        // Intento 1: Actualización inmediata
+        // Asegurar que la UI refleja el estado actual
         setTimeout(() => {
-          logger.debug('🔄 Intento 1: Forzando actualización inmediata de edges');
-          setEdges(currentEdges => {
-            const newEdges = [...currentEdges];
-            return newEdges;
-          });
-        }, 10);
-        
-        // Intento 2: Actualización con delay corto
-        setTimeout(() => {
-          logger.debug('🔄 Intento 2: Segunda actualización de edges');
-          setEdges(currentEdges => {
-            // Forzar re-renderización completa
-            return [...currentEdges];
-          });
+          if (state.currentFlow?.connections) {
+            const domainConnections = state.currentFlow.connections.length;
+            setEdges(currentEdges => {
+              if (currentEdges.length !== domainConnections) {
+                logger.debug('� Sincronizando edges con el dominio');
+                return initialEdges;
+              }
+              return currentEdges;
+            });
+          }
         }, 50);
-        
-        // Intento 3: Actualización con delay medio para asegurar renderización
-        setTimeout(() => {
-          logger.debug('🔄 Intento 3: Verificación final de edges');
-          setEdges(currentEdges => {
-            if (currentEdges.length === 0 && state.currentFlow?.connections && state.currentFlow.connections.length > 0) {
-              logger.warn('🚨 Detectado problema de renderización, forzando actualización desde dominio');
-              // Forzar actualización desde el estado del dominio
-              return initialEdges;
-            }
-            return currentEdges;
-          });
-        }, 100);
         
       } catch (error) {
         logger.error('❌ Error al crear conexión:', error);
+        // Revertir cambios en caso de error
+        setEdges(eds => eds.filter(e => e.id !== `${params.source}-${params.target}`));
+      } finally {
+        // Restaurar el estado de sincronización
+        setTimeout(() => {
+          isSyncingRef.current = false;
+        }, 100);
       }
     };
     
-    // Ejecutar la creación con manejo de errores
-    createConnectionAndForceRender();
+    createConnection();
   }, [actions, setEdges, state.currentFlow, initialEdges, isConnectionValid]);
 
   const onDrop = useCallback((event: React.DragEvent) => {

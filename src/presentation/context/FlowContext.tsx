@@ -8,6 +8,13 @@ import { FlowPersistenceService } from '../../infrastructure/services/FlowPersis
 import { useNotificationHelpers } from '../hooks/useNotificationHelpers';
 import { logger } from '../../shared/utils';
 import type { SelectionState } from '../../shared/types/selection';
+import { 
+  updateNodeImmutable, 
+  addNodeImmutable, 
+  removeNodeImmutable, 
+  addConnectionImmutable, 
+  removeConnectionImmutable 
+} from '../../shared/utils/immutableUpdates';
 
 interface FlowState {
   currentFlow: Flow | null;
@@ -477,25 +484,25 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
           });
           console.log('✅ Node created:', node);
           
-          // Agregar el nodo al flujo
-          flow.addNode(node);
-          console.log('✅ Node added to flow');
+          // 🔄 Usar sistema inmutable para agregar nodo
+          const updatedFlow = await addNodeImmutable(flow, node);
+          console.log('✅ Node added to flow using immutable system');
           
           try {
-            // Primero actualizar la UI para respuesta inmediata
-            dispatch({ type: 'ADD_NODE', payload: node });
-            console.log('✅ Node dispatched to reducer');
+            // Actualizar la UI con el flujo actualizado
+            dispatch({ type: 'SET_CURRENT_FLOW', payload: updatedFlow });
+            console.log('✅ Flow updated in state');
             
-            // Luego intentar guardar en el repositorio
+            // Guardar en el repositorio
             if (typeof flowService.saveFlow === 'function') {
-              await flowService.saveFlow(flow);
+              await flowService.saveFlow(updatedFlow);
               console.log('✅ Flow saved with new node');
             } else {
               console.error('❌ flowService.saveFlow is not a function');
               console.log('📌 Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(flowService)));
               // Fallback - intentar usar addNode del servicio si saveFlow no está disponible
               if (typeof flowService.addNode === 'function') {
-                await flowService.addNode(flow.id, {
+                await flowService.addNode(updatedFlow.id, {
                   type: nodeType as any,
                   position: nodePosition,
                   data: { label: `${nodeType} Node` }
@@ -518,9 +525,18 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
       if (!state.currentFlow) return;
       
       try {
-        await flowService.updateNode(state.currentFlow.id, nodeId, updates);
-        dispatch({ type: 'UPDATE_NODE', payload: { nodeId, updates } });
+        // 🔄 Usar sistema inmutable para actualizaciones
+        const updatedFlow = await updateNodeImmutable(state.currentFlow, nodeId, updates);
+        
+        // Persistir cambios
+        await flowService.updateNode(updatedFlow.id, nodeId, updates);
+        
+        // Actualizar estado
+        dispatch({ type: 'SET_CURRENT_FLOW', payload: updatedFlow });
+        
+        logger.success('✅ Node updated successfully with immutable system');
       } catch (error) {
+        logger.error('❌ Error updating node:', error);
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
       }
     }, [flowService, state.currentFlow]),
@@ -532,6 +548,8 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
       }
       
       console.log('🚀 Iniciando eliminación del nodo:', nodeId, 'del flujo:', state.currentFlow.id);
+      console.log('📋 Nodos antes de eliminar:', state.currentFlow.nodes.map(n => ({ id: n.id, type: n.type })));
+      console.log('🔗 Conexiones antes de eliminar:', state.currentFlow.connections.map(c => ({ id: c.id, source: c.sourceNodeId, target: c.targetNodeId })));
       
       try {
         // Verificar que el nodo existe
@@ -539,40 +557,47 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
         
         if (!nodeExists) {
           console.warn('⚠️ El nodo a eliminar no existe en el estado:', nodeId);
-          
-          // ANTI-FANTASMAS: Actualizar el estado de todas formas para eliminar referencias fantasma
-          console.log('🧹 Actualizando el estado para eliminar cualquier referencia persistente');
-          dispatch({ type: 'REMOVE_NODE', payload: nodeId });
           return;
         }
         
         console.log('✅ El nodo existe, procediendo con la eliminación');
         
-        // PASO 1: Asegurar que el flujo esté actualizado en el repositorio
+        // 🔄 Usar sistema inmutable para remover nodo
+        console.log('🔄 Llamando removeNodeImmutable...');
+        const updatedFlow = await removeNodeImmutable(state.currentFlow, nodeId);
+        console.log('✅ removeNodeImmutable completado');
+        console.log('📋 Nodos después de eliminar:', updatedFlow.nodes.map(n => ({ id: n.id, type: n.type })));
+        console.log('🔗 Conexiones después de eliminar:', updatedFlow.connections.map(c => ({ id: c.id, source: c.sourceNodeId, target: c.targetNodeId })));
+        
+        // PASO 1: Eliminar el nodo del servicio
         try {
-          await flowService.saveFlow(state.currentFlow);
-          console.log('✅ Flujo sincronizado en repositorio antes de eliminar nodo');
-        } catch (syncError) {
-          console.warn('⚠️ No se pudo sincronizar el flujo:', syncError);
-          // Continuar con la eliminación de todas formas
+          console.log('🔄 Eliminando nodo del servicio...');
+          await flowService.removeNode(updatedFlow.id, nodeId);
+          console.log('✅ Nodo eliminado del servicio');
+        } catch (removeError) {
+          console.error('❌ Error al eliminar nodo del servicio:', removeError);
+          // Continuar con la actualización del estado local
         }
         
-        // PASO 2: Eliminar el nodo del servicio
-        try {
-          await flowService.removeNode(state.currentFlow.id, nodeId);
-          console.log('✅ Nodo eliminado del servicio, actualizando UI');
-          dispatch({ type: 'REMOVE_NODE', payload: nodeId });
-        } catch (removeError) {
-          // Si falla la eliminación del nodo en el servicio, eliminar solo en la UI
-          console.error('❌ Error al eliminar nodo del servicio, actualizando solo UI:', removeError);
-          console.log('⚠️ Eliminando nodo solo en la UI como fallback');
-          dispatch({ type: 'REMOVE_NODE', payload: nodeId });
+        // PASO 2: Actualizar estado con flujo actualizado
+        console.log('🔄 Actualizando estado local...');
+        dispatch({ type: 'SET_CURRENT_FLOW', payload: updatedFlow });
+        
+        // Limpiar selección si el nodo eliminado era el seleccionado
+        if (state.selectedNodeId === nodeId) {
+          console.log('🔄 Limpiando selección del nodo eliminado');
+          dispatch({ type: 'SET_SELECTED_NODE', payload: null });
         }
+        
+        logger.success('✅ Node removed successfully with immutable system');
+        console.log('🎉 Eliminación de nodo completada exitosamente');
+        
       } catch (error) {
         console.error('❌ Error general en removeNode:', error);
+        console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
       }
-    }, [flowService, state.currentFlow]),
+    }, [flowService, state.currentFlow, state.selectedNodeId]),
 
     addConnection: useCallback(async (sourceNodeId: string, targetNodeId: string, sourceHandle?: string, targetHandle?: string) => {
       console.log('🔧 FlowContext.addConnection called with:', { sourceNodeId, targetNodeId, sourceHandle, targetHandle });
@@ -591,16 +616,12 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
         });
         console.log('✅ Connection created:', connection);
         
-        // CORRECCIÓN: Dispatch inmediato para actualizar el estado
-        dispatch({ type: 'ADD_CONNECTION', payload: connection });
-        console.log('✅ Connection dispatched to reducer');
+        // 🔄 Usar sistema inmutable para agregar conexión
+        const updatedFlow = await addConnectionImmutable(state.currentFlow, connection);
         
-        // Forzar re-renderización inmediata del estado
-        setTimeout(() => {
-          // Crear un pequeño cambio en el estado para forzar re-renderización
-          // sin afectar la funcionalidad
-          dispatch({ type: 'SET_LOADING', payload: false });
-        }, 10);
+        // Actualizar estado con flujo actualizado
+        dispatch({ type: 'SET_CURRENT_FLOW', payload: updatedFlow });
+        console.log('✅ Connection added using immutable system');
         
       } catch (error) {
         console.error('❌ Error in addConnection:', error);
@@ -612,16 +633,26 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
       if (!state.currentFlow) return;
       
       try {
-        await flowService.removeConnection(state.currentFlow.id, connectionId);
-        dispatch({ type: 'REMOVE_CONNECTION', payload: connectionId });
+        // 🔄 Usar sistema inmutable para remover conexión
+        const updatedFlow = await removeConnectionImmutable(state.currentFlow, connectionId);
+        
+        // Persistir cambios
+        await flowService.removeConnection(updatedFlow.id, connectionId);
+        
+        // Actualizar estado
+        dispatch({ type: 'SET_CURRENT_FLOW', payload: updatedFlow });
+        
+        logger.success('✅ Connection removed successfully with immutable system');
       } catch (error) {
+        logger.error('❌ Error removing connection:', error);
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
       }
     }, [flowService, state.currentFlow]),
 
     selectNode: useCallback((nodeId: string | null) => {
       dispatch({ type: 'SET_SELECTED_NODE', payload: nodeId });
-      // También actualizar el sistema de selección unificado
+      
+      // 🎯 Mantener sistema tradicional para compatibilidad
       if (nodeId) {
         setSelection({ type: 'node', elementId: nodeId });
       } else {

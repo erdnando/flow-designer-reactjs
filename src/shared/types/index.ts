@@ -57,9 +57,13 @@ export interface FlowProps {
   description?: string;
   nodes?: NodeProps[];
   connections?: ConnectionProps[];
-  status?: 'active' | 'inactive' | 'draft';
+  status?: 'active' | 'inactive' | 'draft' | 'design' | 'published' | 'error';
   owner?: string;
+  creator?: string;
 }
+
+// Exportar tipos de selección
+export * from './selection';
 
 // Tipos específicos para React Flow
 export interface FlowNode extends ReactFlowNode {

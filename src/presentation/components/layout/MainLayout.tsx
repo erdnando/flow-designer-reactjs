@@ -6,13 +6,10 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import FlowCanvas from '../flow/FlowCanvas';
 import NodePalette from '../ui/NodePalette';
 import PropertiesPanel from '../ui/PropertiesPanel';
-import { useFlowDesigner } from '../../hooks/useFlowDesigner';
 import './MainLayout.css';
 
 // Componente interno que usa hooks de ReactFlow
 const MainLayoutContent: React.FC = () => {
-  const { selectedNode } = useFlowDesigner();
-
   return (
     <div className="main-layout">
       {/* Header */}
@@ -54,7 +51,7 @@ const MainLayoutContent: React.FC = () => {
           className="main-layout__sidebar main-layout__sidebar--right"
           style={{ width: 320 }}
         >
-          <PropertiesPanel selectedNode={selectedNode} />
+          <PropertiesPanel />
         </aside>
       </main>
     </div>

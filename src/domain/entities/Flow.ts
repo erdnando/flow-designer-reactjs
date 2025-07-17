@@ -9,8 +9,9 @@ export class Flow {
   public description: string;
   public nodes: Node[];
   public connections: Connection[];
-  public status: 'active' | 'inactive' | 'draft';
+  public status: 'design' | 'published' | 'error' | 'active' | 'inactive' | 'draft'; // Mantener compatibilidad
   public owner: string;
+  public creator: string; // Nueva propiedad
   public readonly createdAt: Date;
   public updatedAt: Date;
 
@@ -21,7 +22,8 @@ export class Flow {
     nodes = [],
     connections = [],
     status = 'draft',
-    owner = ''
+    owner = '',
+    creator = '' // Nueva propiedad con valor por defecto
   }: FlowProps) {
     this.id = id ?? uuidv4();
     this.name = name;
@@ -30,6 +32,7 @@ export class Flow {
     this.connections = connections.map(connProps => connProps instanceof Connection ? connProps : new Connection(connProps));
     this.status = status;
     this.owner = owner;
+    this.creator = creator || owner; // Usar owner si creator no está definido
     this.createdAt = new Date();
     this.updatedAt = new Date();
   }
@@ -196,6 +199,15 @@ export class Flow {
     }
   }
 
+  /**
+   * Actualiza las propiedades del flujo
+   */
+  updateProperties(updates: Partial<FlowProps>): Flow {
+    Object.assign(this, updates);
+    this.updatedAt = new Date();
+    return this;
+  }
+
   toJSON(): FlowProps & { createdAt: Date; updatedAt: Date } {
     return {
       id: this.id,
@@ -205,6 +217,7 @@ export class Flow {
       connections: this.connections.map(conn => conn.toJSON()),
       status: this.status,
       owner: this.owner,
+      creator: this.creator,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
     };

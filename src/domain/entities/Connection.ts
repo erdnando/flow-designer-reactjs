@@ -11,6 +11,14 @@ export class Connection {
   public style: ConnectionStyle;
   public readonly createdAt: Date;
 
+  // Propiedades adicionales para el sistema de propiedades
+  public name: string;
+  public mapping: {
+    sourceOutput: string;
+    targetInput: string;
+    transformations?: any[];
+  };
+
   constructor({
     id = uuidv4(),
     sourceNodeId,
@@ -28,6 +36,14 @@ export class Connection {
     this.selected = selected;
     this.style = style;
     this.createdAt = new Date();
+    
+    // Propiedades adicionales
+    this.name = `${sourceNodeId}-${targetNodeId}`;
+    this.mapping = {
+      sourceOutput: sourceHandle || '',
+      targetInput: targetHandle || '',
+      transformations: []
+    };
     
     console.log('🔧 Connection constructor, handles:', { 
       sourceHandle: this.sourceHandle, 
@@ -47,6 +63,21 @@ export class Connection {
 
   updateStyle(newStyle: Partial<ConnectionStyle>): Connection {
     this.style = { ...this.style, ...newStyle };
+    return this;
+  }
+
+  /**
+   * Actualiza las propiedades de la conexión
+   */
+  updateProperties(updates: Partial<{
+    name: string;
+    mapping: {
+      sourceOutput: string;
+      targetInput: string;
+      transformations?: any[];
+    };
+  }>): Connection {
+    Object.assign(this, updates);
     return this;
   }
 

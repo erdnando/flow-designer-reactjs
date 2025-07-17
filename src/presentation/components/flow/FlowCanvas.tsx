@@ -17,6 +17,7 @@ import BezierEdge from './BezierEdge';
 import SmoothBezierEdge from './SmoothBezierEdge';
 import CustomConnectionLine from './CustomConnectionLine';
 import { useFlowDesigner } from '../../hooks/useFlowDesigner';
+import { useFlowContext } from '../../context/FlowContext';
 import { CANVAS_CONFIG } from '../../../shared/constants';
 import './FlowCanvas.css';
 import './custom-marker.css';
@@ -64,6 +65,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
     isValidConnection
   } = useFlowDesigner();
 
+  const { actions } = useFlowContext();
   const { fitView } = useReactFlow();
   
   // Configurar las utilidades de depuración de drag & drop
@@ -79,12 +81,22 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
   const handleNodeClick = useCallback((event: React.MouseEvent, node: any) => {
     // Asegurar la selección explícita del nodo
     selectNode(node.id);
-  }, [selectNode]);
+    // También actualizar la selección unificada
+    actions.selectNode(node.id);
+  }, [selectNode, actions]);
 
   const handlePaneClick = useCallback(() => {
     // Deseleccionar nodos al hacer click en el canvas vacío
     selectNode(null);
-  }, [selectNode]);
+    // Seleccionar el flujo en el sistema unificado
+    actions.selectFlow();
+  }, [selectNode, actions]);
+
+  // Nuevo controlador para seleccionar conexiones
+  const handleEdgeClick = useCallback((event: React.MouseEvent, edge: any) => {
+    // Seleccionar la conexión en el sistema unificado
+    actions.selectConnection(edge.id);
+  }, [actions]);
 
   const onInit = useCallback(() => {
     // Ajustar vista inicial con zoom personalizado muy alejado
@@ -150,6 +162,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         onPaneClick={handlePaneClick}
         onInit={onInit}
         onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}

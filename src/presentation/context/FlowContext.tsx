@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useCallback, useMemo, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useMemo, useEffect, ReactNode, useState } from 'react';
 import { Flow } from '../../domain/entities/Flow';
 import { Node } from '../../domain/entities/Node';
 import type { Connection } from '../../domain/entities/Connection';
@@ -7,6 +7,7 @@ import { InMemoryFlowRepository } from '../../infrastructure/repositories/InMemo
 import { FlowPersistenceService } from '../../infrastructure/services/FlowPersistenceService';
 import { useNotificationHelpers } from '../hooks/useNotificationHelpers';
 import { logger } from '../../shared/utils';
+import type { SelectionState } from '../../shared/types/selection';
 
 interface FlowState {
   currentFlow: Flow | null;
@@ -182,6 +183,7 @@ const flowReducer = (state: FlowState, action: FlowAction): FlowState => {
 
 interface FlowContextType {
   state: FlowState;
+  selection: SelectionState;
   flowService: FlowService;
   actions: {
     createFlow: (name: string, description?: string) => Promise<void>;
@@ -193,6 +195,12 @@ interface FlowContextType {
     removeConnection: (connectionId: string) => Promise<void>;
     selectNode: (nodeId: string | null) => void;
     moveNode: (nodeId: string, position: { x: number; y: number }) => Promise<void>;
+    // Nuevas acciones para el sistema de selección
+    selectFlow: () => void;
+    selectConnection: (connectionId: string) => void;
+    clearSelection: () => void;
+    updateFlowProperties: (updates: Partial<Flow>) => Promise<void>;
+    updateConnectionProperties: (connectionId: string, updates: Partial<Connection>) => Promise<void>;
   };
 }
 
@@ -214,6 +222,12 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
   logger.debug('FlowProvider: Component initializing...');
   const [state, dispatch] = useReducer(flowReducer, initialState);
   const { showWarning } = useNotificationHelpers();
+  
+  // Estado de selección para el sistema de propiedades
+  const [selection, setSelection] = useState<SelectionState>({
+    type: null,
+    elementId: null
+  });
   
   // Inicializar servicios
   const persistenceService = useMemo(() => new FlowPersistenceService(), []);
@@ -607,6 +621,12 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
 
     selectNode: useCallback((nodeId: string | null) => {
       dispatch({ type: 'SET_SELECTED_NODE', payload: nodeId });
+      // También actualizar el sistema de selección unificado
+      if (nodeId) {
+        setSelection({ type: 'node', elementId: nodeId });
+      } else {
+        setSelection({ type: null, elementId: null });
+      }
     }, []),
 
     moveNode: useCallback(async (nodeId: string, position: { x: number; y: number }) => {
@@ -677,11 +697,82 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
         console.error('❌ Error in moveNode:', error);
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
       }
-    }, [flowService, state, dispatch])
+    }, [flowService, state, dispatch]),
+
+    // Nuevas acciones para el sistema de selección
+    selectFlow: useCallback(() => {
+      setSelection({ type: 'flow', elementId: state.currentFlow?.id || null });
+    }, [state.currentFlow]),
+
+    selectConnection: useCallback((connectionId: string) => {
+      setSelection({ type: 'connection', elementId: connectionId });
+    }, []),
+
+    clearSelection: useCallback(() => {
+      setSelection({ type: null, elementId: null });
+    }, []),
+
+    updateFlowProperties: useCallback(async (updates: Partial<Flow>) => {
+      try {
+        if (!state.currentFlow) {
+          throw new Error('No hay un flujo activo para actualizar');
+        }
+        
+        dispatch({ type: 'SET_LOADING', payload: true });
+        
+        // Actualizar propiedades en la entidad
+        state.currentFlow.updateProperties(updates);
+        
+        // Guardar en el servicio
+        await flowService.saveFlow(state.currentFlow);
+        
+        // Actualizar en localStorage
+        persistenceService.saveFlow(state.currentFlow);
+        
+        // Actualizar estado
+        dispatch({ type: 'SET_CURRENT_FLOW', payload: state.currentFlow });
+        
+        logger.success('Propiedades del flujo actualizadas exitosamente');
+      } catch (error) {
+        dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Error desconocido' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
+    }, [state.currentFlow, flowService, persistenceService, dispatch]),
+
+    updateConnectionProperties: useCallback(async (connectionId: string, updates: Partial<Connection>) => {
+      try {
+        if (!state.currentFlow) {
+          throw new Error('No hay un flujo activo');
+        }
+        
+        const connectionIndex = state.currentFlow.connections.findIndex(c => c.id === connectionId);
+        if (connectionIndex === -1) {
+          throw new Error('Conexión no encontrada');
+        }
+        
+        // Actualizar propiedades en la entidad
+        state.currentFlow.connections[connectionIndex].updateProperties(updates);
+        
+        // Guardar en el servicio
+        await flowService.saveFlow(state.currentFlow);
+        
+        // Actualizar en localStorage
+        persistenceService.saveFlow(state.currentFlow);
+        
+        // Actualizar estado
+        dispatch({ type: 'SET_CURRENT_FLOW', payload: state.currentFlow });
+        
+        logger.success('Propiedades de la conexión actualizadas exitosamente');
+      } catch (error) {
+        dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Error desconocido' });
+      }
+    }, [state.currentFlow, flowService, persistenceService, dispatch])
   };
 
   const contextValue: FlowContextType = {
     state,
+    selection,
     flowService,
     actions
   };

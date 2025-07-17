@@ -10,6 +10,34 @@ export class Node {
   public readonly createdAt: Date;
   public updatedAt: Date;
 
+  // Propiedades adicionales para el sistema de propiedades
+  public get name(): string {
+    return this.data.label || '';
+  }
+
+  public set name(value: string) {
+    this.data.label = value;
+    this.updatedAt = new Date();
+  }
+
+  public get description(): string {
+    return this.data.description || '';
+  }
+
+  public set description(value: string) {
+    this.data.description = value;
+    this.updatedAt = new Date();
+  }
+
+  public get status(): string {
+    return this.data.status || 'idle';
+  }
+
+  public set status(value: string) {
+    this.data.status = value as any;
+    this.updatedAt = new Date();
+  }
+
   constructor({
     id = uuidv4(),
     type,
@@ -69,6 +97,15 @@ export class Node {
       data: { ...this.data },
       selected: false
     });
+  }
+
+  /**
+   * Actualiza las propiedades del nodo
+   */
+  updateProperties(updates: Partial<NodeProps>): Node {
+    Object.assign(this, updates);
+    this.updatedAt = new Date();
+    return this;
   }
 
   toJSON(): NodeProps & { createdAt: Date; updatedAt: Date } {

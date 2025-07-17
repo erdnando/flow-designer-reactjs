@@ -26,7 +26,7 @@ export const NODE_TYPES: Record<NodeType, NodeTypeConfig> = {
     icon: '💎',
     allowedInputs: 1,
     allowedOutputs: 2,
-    shape: 'diamond'
+    shape: 'rectangle'
   },
   end: {
     label: 'End',

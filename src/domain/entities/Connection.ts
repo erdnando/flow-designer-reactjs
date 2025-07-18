@@ -37,6 +37,17 @@ export class Connection {
     this.style = style;
     this.createdAt = new Date();
     
+    // Log específico para handler "false"
+    if (sourceHandle === 'false') {
+      console.log('🔍 HANDLER FALSE DETECTED in Connection constructor:', { 
+        id: this.id,
+        sourceNodeId: this.sourceNodeId,
+        targetNodeId: this.targetNodeId,
+        sourceHandle: this.sourceHandle,
+        targetHandle: this.targetHandle 
+      });
+    }
+    
     // Propiedades adicionales
     this.name = `${sourceNodeId}-${targetNodeId}`;
     this.mapping = {
@@ -47,8 +58,9 @@ export class Connection {
     
     console.log('🔧 Connection constructor, handles:', { 
       sourceHandle: this.sourceHandle, 
-      targetHandle: this.targetHandle 
-    });
+      targetHandle: this.targetHandle,
+      mapping: this.mapping
+    }); 
   }
 
   select(): Connection {

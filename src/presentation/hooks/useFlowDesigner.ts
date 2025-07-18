@@ -1030,6 +1030,13 @@ export const useFlowDesigner = () => {
 
   const onConnect = useCallback((params: any) => {
     logger.debug('⚡ onConnect called with params:', params);
+    logger.debug('🔍 onConnect - Full params details:', {
+      source: params.source,
+      sourceHandle: params.sourceHandle,
+      target: params.target,
+      targetHandle: params.targetHandle,
+      allParams: params
+    });
     
     if (!params.source || !params.target) {
       logger.error('❌ Missing source or target in connection params');
@@ -1038,6 +1045,7 @@ export const useFlowDesigner = () => {
     
     // Validación de la conexión
     if (state.currentFlow) {
+      logger.debug('🔍 Validando conexión en onConnect...');
       const validationResult = isConnectionValid(
         params,
         state.currentFlow.nodes,
@@ -1049,6 +1057,8 @@ export const useFlowDesigner = () => {
         alert(`Conexión no válida: ${validationResult.message}`);
         return;
       }
+      
+      logger.debug('✅ Validación en onConnect pasada');
     }
     
     // Log para depuración
@@ -1400,10 +1410,13 @@ export const useFlowDesigner = () => {
         logger.debug('❌ Conexión inválida durante arrastre:', validationResult.message);
         return false;
       }
+      
+      logger.debug('✅ isValidConnection: retornando true');
+      return true;
     }
     
-    logger.debug('✅ Conexión válida durante arrastre');
-    return true;
+    logger.debug('❌ isValidConnection: no hay currentFlow');
+    return false;
   }, [state.currentFlow, isConnectionValid]);
 
   // Función para obtener ayuda sobre conexiones

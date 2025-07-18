@@ -601,6 +601,12 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
 
     addConnection: useCallback(async (sourceNodeId: string, targetNodeId: string, sourceHandle?: string, targetHandle?: string) => {
       console.log('🔧 FlowContext.addConnection called with:', { sourceNodeId, targetNodeId, sourceHandle, targetHandle });
+      
+      // Log específico para handler "false"
+      if (sourceHandle === 'false') {
+        console.log('🔍 HANDLER FALSE DETECTED in addConnection:', { sourceNodeId, targetNodeId, sourceHandle, targetHandle });
+      }
+      
       if (!state.currentFlow) {
         console.error('❌ No current flow available in addConnection');
         return;
@@ -615,6 +621,7 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
           targetHandle: targetHandle || 'input'
         });
         console.log('✅ Connection created:', connection);
+        console.log('🔍 Connection mapping details:', connection.mapping);
         
         // 🔄 Usar sistema inmutable para agregar conexión
         const updatedFlow = await addConnectionImmutable(state.currentFlow, connection);
@@ -736,8 +743,30 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
     }, [state.currentFlow]),
 
     selectConnection: useCallback((connectionId: string) => {
+      console.log('🔍 selectConnection called with:', connectionId);
+      
+      // Buscar la conexión en el estado actual
+      if (state.currentFlow) {
+        const connection = state.currentFlow.connections.find(c => c.id === connectionId);
+        if (connection) {
+          console.log('🔍 Connection found:', connection);
+          console.log('🔍 Connection handles:', { 
+            sourceHandle: connection.sourceHandle, 
+            targetHandle: connection.targetHandle 
+          });
+          console.log('🔍 Connection mapping:', connection.mapping);
+          
+          // Log específico para handler "false"
+          if (connection.sourceHandle === 'false') {
+            console.log('🔍 HANDLER FALSE DETECTED in selectConnection:', connection);
+          }
+        } else {
+          console.error('❌ Connection not found:', connectionId);
+        }
+      }
+      
       setSelection({ type: 'connection', elementId: connectionId });
-    }, []),
+    }, [state.currentFlow]),
 
     clearSelection: useCallback(() => {
       setSelection({ type: null, elementId: null });

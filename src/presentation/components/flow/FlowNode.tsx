@@ -99,6 +99,15 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
     // Renderizar handlers de salida
     nodeHandlers.outputs.forEach(handler => {
       const position = handler.position.charAt(0).toUpperCase() + handler.position.slice(1);
+      
+      // Para handlers del nodo IF, no aplicar estilos inline que interfieren con CSS
+      const isIFHandler = data.nodeType === 'if' && (handler.id === 'true' || handler.id === 'false');
+      const handleStyle = isIFHandler ? { cursor: 'crosshair' } : { 
+        ...handler.style,
+        cursor: 'crosshair',
+        borderRadius: '50%'
+      };
+      
       handles.push(
         <Handle
           key={handler.id}
@@ -107,11 +116,7 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
           id={handler.id}
           className={`flow-node__handle flow-node__handle--output flow-node__handle--${handler.id}`}
           onMouseDown={handleConnectionStart}
-          style={{ 
-            ...handler.style,
-            cursor: 'crosshair',
-            borderRadius: '50%'
-          }}
+          style={handleStyle}
         />
       );
     });

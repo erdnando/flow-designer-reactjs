@@ -51,31 +51,58 @@
   box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
 }
 
-/* Handlers específicos para IF */
-.flow-node__handle--true,
-.react-flow__handle.flow-node__handle--true {
+/* Handlers específicos para IF - Verde para TRUE con máxima especificidad */
+.react-flow__handle[data-id="true"],
+.react-flow__handle.flow-node__handle--true,
+.react-flow__renderer .flow-node__handle--true,
+.flow-node .flow-node__handle--true {
   background: #4CAF50 !important;
-  border-color: #2E7D32 !important;
+  border: 2px solid #2E7D32 !important;
   border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  transition: all 0.2s ease !important;
+  z-index: 10 !important;
+  position: absolute !important;
 }
 
-.flow-node__handle--true:hover {
+.react-flow__handle[data-id="true"]:hover,
+.react-flow__handle.flow-node__handle--true:hover,
+.react-flow__renderer .flow-node__handle--true:hover,
+.flow-node .flow-node__handle--true:hover {
   background: #388E3C !important;
   border-color: #1B5E20 !important;
-  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8) !important;
+  transform: scale(1.5) !important;
+  width: 18px !important;
+  height: 18px !important;
 }
 
-.flow-node__handle--false,
-.react-flow__handle.flow-node__handle--false {
+/* Handlers específicos para IF - Rojo para FALSE con máxima especificidad */
+.react-flow__handle[data-id="false"],
+.react-flow__handle.flow-node__handle--false,
+.react-flow__renderer .flow-node__handle--false,
+.flow-node .flow-node__handle--false {
   background: #F44336 !important;
-  border-color: #C62828 !important;
+  border: 2px solid #C62828 !important;
   border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  transition: all 0.2s ease !important;
+  z-index: 10 !important;
+  position: absolute !important;
 }
 
-.flow-node__handle--false:hover {
+.react-flow__handle[data-id="false"]:hover,
+.react-flow__handle.flow-node__handle--false:hover,
+.react-flow__renderer .flow-node__handle--false:hover,
+.flow-node .flow-node__handle--false:hover {
   background: #D32F2F !important;
   border-color: #B71C1C !important;
-  box-shadow: 0 0 8px rgba(244, 67, 54, 0.8);
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.8) !important;
+  transform: scale(1.5) !important;
+  width: 18px !important;
+  height: 18px !important;
 }
 
 /* Remover los handlers por tipo específico para evitar duplicados - heredan estilos base */
@@ -149,4 +176,90 @@
 .flow-node__handle.react-flow__handle {
   background: inherit;
   border: inherit;
+}
+
+/* Posicionamiento específico para handlers del nodo IF - A LA DERECHA */
+.flow-node--if .flow-node__handle--true {
+  top: 25% !important;
+  right: -6px !important;
+  left: auto !important;
+  transform: translateY(-50%) !important;
+}
+
+.flow-node--if .flow-node__handle--false {
+  top: 75% !important;
+  right: -6px !important;
+  left: auto !important;
+  transform: translateY(-50%) !important;
+}
+
+/* FORZAR estilos para handlers IF - Mismo tamaño que estándar pero sin borde blanco */
+.react-flow .react-flow__renderer .react-flow__handle.flow-node__handle--true,
+.react-flow .react-flow__renderer [data-handleid="true"],
+.react-flow .react-flow__handle[data-handleid="true"] {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3) !important;
+  background-color: #4CAF50 !important;
+  position: absolute !important;
+  right: -4px !important;
+  top: 25% !important;
+  left: auto !important;
+  transform: translateY(-50%) !important;
+  transition: all 0.2s ease-in-out !important;
+  z-index: 10 !important;
+}
+
+.react-flow .react-flow__renderer .react-flow__handle.flow-node__handle--true:hover,
+.react-flow .react-flow__renderer [data-handleid="true"]:hover,
+.react-flow .react-flow__handle[data-handleid="true"]:hover {
+  transform: translateY(-50%) scale(1.3) !important;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.5), 0 0 10px rgba(76, 175, 80, 0.5) !important;
+  width: 14px !important;
+  height: 14px !important;
+  background: #4CAF50 !important;
+  z-index: 50 !important;
+}
+
+.react-flow .react-flow__renderer .react-flow__handle.flow-node__handle--false,
+.react-flow .react-flow__renderer [data-handleid="false"],
+.react-flow .react-flow__handle[data-handleid="false"] {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3) !important;
+  background-color: #F44336 !important;
+  position: absolute !important;
+  right: -4px !important;
+  top: 75% !important;
+  left: auto !important;
+  transform: translateY(-50%) !important;
+  transition: all 0.2s ease-in-out !important;
+  z-index: 10 !important;
+}
+
+.react-flow .react-flow__renderer .react-flow__handle.flow-node__handle--false:hover,
+.react-flow .react-flow__renderer [data-handleid="false"]:hover,
+.react-flow .react-flow__handle[data-handleid="false"]:hover {
+  transform: translateY(-50%) scale(1.3) !important;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.5), 0 0 10px rgba(244, 67, 54, 0.5) !important;
+  width: 14px !important;
+  height: 14px !important;
+  background: #F44336 !important;
+  z-index: 50 !important;
+}
+
+/* Asegurar que todos los handlers de salida funcionen igual */
+.flow-node__handle--output.react-flow__handle {
+  cursor: crosshair !important;
+  pointer-events: all !important;
+}
+
+.flow-node__handle--true.react-flow__handle,
+.flow-node__handle--false.react-flow__handle {
+  cursor: crosshair !important;
+  pointer-events: all !important;
 }

@@ -126,6 +126,11 @@ export const useConnectionValidation = () => {
     
     console.log(`Handles: origen=${sourceHandle}, destino=${targetHandle}`);
     
+    // Log específico para handler "false"
+    if (sourceHandle === 'false') {
+      console.log('🔍 HANDLER FALSE DETECTED in validation:', { source: sourceId, sourceHandle, target: targetId, targetHandle });
+    }
+    
     // REGLA 5: Validar que los handles sean válidos para los tipos de nodo
     if (sourceHandle && !isValidHandle(sourceNode.type, sourceHandle, 'source')) {
       console.error(`❌ Handle de origen inválido: ${sourceHandle} para nodo ${sourceNode.type}`);

@@ -8,20 +8,28 @@ interface ConnectionPropertiesFormProps {
 }
 
 export const ConnectionPropertiesForm: React.FC<ConnectionPropertiesFormProps> = ({ data, onUpdate }) => {
+  console.log('🔍 ConnectionPropertiesForm rendered with data:', data);
+  console.log('🔍 ConnectionPropertiesForm mapping:', data.mapping);
+  
+  // Log específico para handler "false"
+  if (data.mapping?.sourceOutput === 'false') {
+    console.log('🔍 HANDLER FALSE DETECTED in ConnectionPropertiesForm:', data);
+  }
+  
   const [formState, setFormState] = useState({
     name: data.name || '',
-    sourceOutput: data.mapping.sourceOutput || '',
-    targetInput: data.mapping.targetInput || '',
-    transformations: JSON.stringify(data.mapping.transformations || [], null, 2)
+    sourceOutput: data.mapping?.sourceOutput || '',
+    targetInput: data.mapping?.targetInput || '',
+    transformations: JSON.stringify(data.mapping?.transformations || [], null, 2)
   });
 
   // Sincronizar estado del formulario con los datos cuando cambien
   useEffect(() => {
     setFormState({
       name: data.name || '',
-      sourceOutput: data.mapping.sourceOutput || '',
-      targetInput: data.mapping.targetInput || '',
-      transformations: JSON.stringify(data.mapping.transformations || [], null, 2)
+      sourceOutput: data.mapping?.sourceOutput || '',
+      targetInput: data.mapping?.targetInput || '',
+      transformations: JSON.stringify(data.mapping?.transformations || [], null, 2)
     });
   }, [data]);
 

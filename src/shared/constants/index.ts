@@ -22,7 +22,7 @@ export const NODE_TYPES: Record<NodeType, NodeTypeConfig> = {
   if: {
     label: 'If',
     description: 'Nodo condicional (if/else)',
-    color: '#f59e0b',
+    color: '#3b82f6',
     icon: '💎',
     allowedInputs: 1,
     allowedOutputs: 2,

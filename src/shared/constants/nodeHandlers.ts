@@ -93,8 +93,7 @@ export const NODE_HANDLERS: Record<string, NodeTypeHandlers> = {
           border: '2px solid #2E7D32',
           width: '12px',
           height: '12px',
-          borderRadius: '50%',
-          top: '30%'
+          borderRadius: '50%'
         }
       },
       {
@@ -107,8 +106,7 @@ export const NODE_HANDLERS: Record<string, NodeTypeHandlers> = {
           border: '2px solid #C62828',
           width: '12px',
           height: '12px',
-          borderRadius: '50%',
-          top: '70%'
+          borderRadius: '50%'
         }
       }
     ]

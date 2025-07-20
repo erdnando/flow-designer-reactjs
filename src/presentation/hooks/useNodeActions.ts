@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useReactFlow } from 'reactflow';
+import { useNodeDeletionConfirm } from './useNodeDeletionConfirm';
 
 export interface NodeAction {
   id: string;
@@ -16,6 +17,8 @@ export interface UseNodeActionsProps {
   onNodeValidate?: (nodeId: string) => void;
   onNodeReset?: (nodeId: string) => void;
   onNodeOptions?: (nodeId: string) => void;
+  nodeName?: string;
+  nodeType?: string;
 }
 
 export const useNodeActions = ({
@@ -23,26 +26,40 @@ export const useNodeActions = ({
   onNodeDelete,
   onNodeValidate,
   onNodeReset,
-  onNodeOptions
+  onNodeOptions,
+  nodeName,
+  nodeType
 }: UseNodeActionsProps) => {
   const reactFlowInstance = useReactFlow();
+  
+  // Usar el hook de confirmación de eliminación
+  const { openConfirmDialog, isConfirmDialogOpen, confirmDeletion, closeConfirmDialog, nodeToDelete } = useNodeDeletionConfirm(
+    (nodeIdToDelete) => {
+      console.log('🗑️ Eliminando nodo confirmado:', nodeIdToDelete);
+      
+      try {
+        // Llamar al callback personalizado si existe
+        if (onNodeDelete) {
+          onNodeDelete(nodeIdToDelete);
+        }
+        
+        // Actualizar la UI de ReactFlow
+        reactFlowInstance.setNodes((nodes) => nodes.filter(node => node.id !== nodeIdToDelete));
+        
+      } catch (error) {
+        console.error('❌ Error al eliminar nodo:', error);
+      }
+    }
+  );
 
   const handleDelete = useCallback(() => {
-    console.log('🗑️ Eliminando nodo:', nodeId);
-    
-    try {
-      // Llamar al callback personalizado si existe
-      if (onNodeDelete) {
-        onNodeDelete(nodeId);
-      }
-      
-      // Actualizar la UI de ReactFlow
-      reactFlowInstance.setNodes((nodes) => nodes.filter(node => node.id !== nodeId));
-      
-    } catch (error) {
-      console.error('❌ Error al eliminar nodo:', error);
-    }
-  }, [nodeId, onNodeDelete, reactFlowInstance]);
+    // Abrir el diálogo de confirmación en lugar de eliminar directamente
+    openConfirmDialog({
+      id: nodeId,
+      name: nodeName,
+      type: nodeType
+    });
+  }, [nodeId, nodeName, nodeType, openConfirmDialog]);
 
   const handleValidate = useCallback(() => {
     console.log('✅ Validando nodo:', nodeId);
@@ -108,6 +125,11 @@ export const useNodeActions = ({
     handleDelete,
     handleValidate,
     handleReset,
-    handleOptions
+    handleOptions,
+    // Exportar variables para el diálogo de confirmación
+    isConfirmDialogOpen,
+    confirmDeletion,
+    closeConfirmDialog,
+    nodeToDelete
   };
 };

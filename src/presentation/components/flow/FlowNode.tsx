@@ -8,6 +8,7 @@ import { validateNode } from '../../../shared/utils/nodeValidation';
 import NodeActionBar from './NodeActionBar';
 import WarningIndicator from './WarningIndicator';
 import NodeIcon from './NodeIcon';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import './FlowNode.css';
 import './FlowNodeHandlers.css';
 
@@ -32,8 +33,8 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
     return validateNode(currentNode, edges);
   }, [id, nodes, edges]);
 
-  // Configurar acciones del nodo
-  const { actions } = useNodeActions({
+  // Configurar acciones del nodo y obtener variables para diálogo de confirmación
+  const { actions, isConfirmDialogOpen, confirmDeletion, closeConfirmDialog, nodeToDelete } = useNodeActions({
     nodeId: id,
     onNodeDelete: data.onNodeDelete,
     onNodeValidate: (nodeId) => {
@@ -47,7 +48,10 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
     onNodeOptions: (nodeId) => {
       console.log('Opciones del nodo:', nodeId);
       // Aquí se podría abrir un menú contextual
-    }
+    },
+    // Pasar información adicional para el diálogo de confirmación
+    nodeName: data.label || nodeConfig.label,
+    nodeType: data.nodeType
   });
 
   const handleMouseEnter = useCallback(() => {
@@ -189,49 +193,76 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
   };
 
   return (
-    <div
-      className={getNodeClasses()}
-      style={{
-        ...getNodeStyles(),
-        cursor: 'grab',
-        touchAction: 'none',
-        userSelect: 'none',
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* Barra de acciones */}
-      <NodeActionBar 
-        actions={actions}
-        isVisible={isHovered || selected}
-        className={nodeConfig.shape === 'diamond' ? 'node-action-bar--diamond' : ''}
+    <>
+      {/* Diálogo de confirmación para eliminación de nodo */}
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        title={`Eliminar nodo ${nodeToDelete?.type ? NODE_TYPES[nodeToDelete.type as NodeType]?.label || nodeToDelete.type : ''}`}
+        message={
+          <>
+            {nodeToDelete?.name && (
+              <strong className="node-delete-name">{nodeToDelete.name}</strong>
+            )}
+            <p>
+              ¿Estás seguro de que deseas eliminar este nodo? 
+              {validationResult.warnings.length > 0 && (
+                <span className="node-delete-warning"> Este nodo tiene advertencias que podrían afectar al flujo.</span>
+              )}
+            </p>
+            <p className="node-delete-note">Esta acción no se puede deshacer y eliminará también todas las conexiones asociadas.</p>
+          </>
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        confirmVariant="danger"
+        onConfirm={confirmDeletion}
+        onCancel={closeConfirmDialog}
       />
-      
-      {/* Handles de conexión */}
-      {renderHandles()}
-      
-      {/* Contenido del nodo */}
-      {renderNodeContent()}
 
-      {/* Etiqueta del nodo - Ahora fuera del nodo principal */}
-      <div className="flow-node__label-container">
-        <div className="flow-node__label">
-          {data.label || nodeConfig.label}
+      <div
+        className={getNodeClasses()}
+        style={{
+          ...getNodeStyles(),
+          cursor: 'grab',
+          touchAction: 'none',
+          userSelect: 'none',
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Barra de acciones */}
+        <NodeActionBar 
+          actions={actions}
+          isVisible={isHovered || selected}
+          className={nodeConfig.shape === 'diamond' ? 'node-action-bar--diamond' : ''}
+        />
+        
+        {/* Handles de conexión */}
+        {renderHandles()}
+        
+        {/* Contenido del nodo */}
+        {renderNodeContent()}
+
+        {/* Etiqueta del nodo - Ahora fuera del nodo principal */}
+        <div className="flow-node__label-container">
+          <div className="flow-node__label">
+            {data.label || nodeConfig.label}
+          </div>
         </div>
-      </div>
 
-      {/* Labels para nodo IF */}
-      {data.nodeType === 'if' && (
-        <>
-          <div className="flow-node__label flow-node__label--true">
-            Sí
-          </div>
-          <div className="flow-node__label flow-node__label--false">
-            No
-          </div>
-        </>
-      )}
-    </div>
+        {/* Labels para nodo IF */}
+        {data.nodeType === 'if' && (
+          <>
+            <div className="flow-node__label flow-node__label--true">
+              Sí
+            </div>
+            <div className="flow-node__label flow-node__label--false">
+              No
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 };
 

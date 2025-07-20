@@ -1,5 +1,19 @@
 * {
   box-sizing: border-box;
+  /* Eliminar outline azul en toda la aplicación */
+  outline: none !important;
+}
+
+/* Regla específica para eliminar el borde azul de enfoque del navegador */
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Eliminar outline específicamente en elementos div */
+div:focus {
+  outline: none !important;
+  border: none !important;
 }
 
 body {

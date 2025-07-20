@@ -94,9 +94,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ className }) => {
         </AnimatePresence>
       </div>
 
-      <div className="properties-panel__footer">
-        <PersistenceStats />
-      </div>
+      
     </div>
   );
 };

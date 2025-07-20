@@ -16,8 +16,10 @@ import FlowNode from './FlowNode';
 import BezierEdge from './BezierEdge';
 import SmoothBezierEdge from './SmoothBezierEdge';
 import CustomConnectionLine from './CustomConnectionLine';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import { useFlowDesigner } from '../../hooks/useFlowDesigner';
 import { useFlowContext } from '../../context/FlowContext';
+import { useClearFlow } from '../../hooks/useClearFlow';
 import { CANVAS_CONFIG } from '../../../shared/constants';
 import './FlowCanvas.css';
 import './custom-marker.css';
@@ -69,6 +71,15 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
 
   const { actions } = useFlowContext();
   const { fitView } = useReactFlow();
+  
+  // Hook para confirmación de limpieza del flujo (basado en contenido visual)
+  const {
+    isConfirmDialogOpen,
+    hasVisualContent,
+    requestClearData,
+    handleConfirmClear,
+    handleCancelClear
+  } = useClearFlow({ nodes, edges });
   
   // Configurar las utilidades de depuración de drag & drop
   useEffect(() => {
@@ -251,9 +262,58 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
             <span className="flow-canvas__stat">
               🔗 {edges.length} connections
             </span>
+            {/* Botón para limpiar flujo - solo aparece si hay nodos o conexiones visibles */}
+            {hasVisualContent && (
+              <button 
+                onClick={requestClearData}
+                style={{
+                  background: '#ff6b6b',
+                  color: 'white',
+                  border: 'none',
+                  padding: '5px 10px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  marginTop: '5px'
+                }}
+                title="Limpiar todos los nodos, conexiones y datos del flujo"
+              >
+                🧹 Limpiar flujo
+              </button>
+            )}
           </div>
         </Panel>
       </ReactFlow>
+      
+      {/* Diálogo de confirmación para limpiar el flujo */}
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        title="Confirmar limpieza del flujo"
+        message={
+          <div>
+            <p>¿Estás seguro de que deseas limpiar completamente el flujo actual?</p>
+            <br />
+            <p><strong>Esta acción eliminará:</strong></p>
+            <ul style={{ textAlign: 'left', marginTop: '10px' }}>
+              <li>• Todos los nodos del canvas ({nodes.length} nodos)</li>
+              <li>• Todas las conexiones ({edges.length} conexiones)</li>
+              <li>• Posiciones y configuraciones guardadas</li>
+              <li>• Datos del viewport</li>
+            </ul>
+            <br />
+           
+            <p style={{ color: '#fbb6ce' }}>
+              <strong>⚠️ Esta acción no se puede deshacer</strong>
+            </p>
+          </div>
+        }
+        confirmText="Sí, limpiar flujo"
+        cancelText="Cancelar"
+        confirmVariant="danger"
+        onConfirm={handleConfirmClear}
+        onCancel={handleCancelClear}
+        focusConfirm={false}
+      />
     </div>
   );
 };

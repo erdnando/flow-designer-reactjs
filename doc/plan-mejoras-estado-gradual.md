@@ -558,7 +558,7 @@ describe('Performance Baseline', () => {
    };
    ```
 
-2. **Revertir a Commit Anterior**:
+2. **Restore a Commit Anterior**:
    ```bash
    git reset --hard HEAD
    git clean -fd 

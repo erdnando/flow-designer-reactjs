@@ -11,6 +11,9 @@
   box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.03) !important;
   /* Prevenir el comportamiento de arrastre del navegador */
   -webkit-user-drag: none !important;
+  /* Eliminar el borde azul de enfoque del navegador */
+  outline: none !important;
+  border: none !important;
 }
 
 /* Prevenir el efecto de arrastre fantasma en todo el canvas */
@@ -18,6 +21,49 @@
   -webkit-user-drag: none !important;
   -khtml-user-drag: none !important;
   -moz-user-drag: none !important;
+}
+
+/* Eliminar bordes y outlines en el viewport de ReactFlow */
+.react-flow__renderer,
+.react-flow__viewport {
+  outline: none !important;
+  border: none !important;
+}
+
+/* Eliminar el borde azul de enfoque en todos los elementos de ReactFlow */
+.react-flow *:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Solución más agresiva para eliminar cualquier borde azul */
+.react-flow__pane,
+.react-flow__container,
+.react-flow__wrapper {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Eliminar outline en el elemento principal de ReactFlow */
+div[data-testid="rf__wrapper"] {
+  outline: none !important;
+  border: none !important;
+}
+
+/* Eliminar outline en cualquier div que contenga ReactFlow */
+.react-flow > div,
+.react-flow div {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Específicamente para el elemento raíz del ReactFlow */
+.react-flow.react-flow__container {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Eliminar la imagen fantasma durante la creación de conexiones */

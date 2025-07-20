@@ -1,21 +1,23 @@
 /* Warning Indicator Styles */
 .warning-indicator {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 16px;
-  height: 16px;
+  /* Posicionamiento dentro del label */
+  top: 10%;
+  right: -10px;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 10px;
   background: rgba(245, 158, 11, 0.9);
   border-radius: 50%;
   border: 1px solid rgba(251, 191, 36, 0.8);
   color: #7b341e;
-  z-index: 10;
-  animation: pulse 2s infinite;
-  cursor: help;
+  z-index: 11; /* Mayor que el z-index del label-container */
+  animation: pulse 1s infinite;
+  cursor: pointer;
 }
 
 @keyframes pulse {
@@ -33,24 +35,30 @@
   }
 }
 
-.warning-indicator:hover {
-  transform: scale(1.1);
-  background: rgba(245, 158, 11, 1);
-  animation: none;
-}
+/* Se ha eliminado el efecto hover */
 
 /* Adaptación para nodos diamante */
 .flow-node--diamond .warning-indicator {
-  transform: rotate(-45deg);
-  bottom: 6px;
-  right: 6px;
+  transform: rotate(0); /* No necesita rotación en esta posición */
+  bottom: -23px; /* Alineado con el texto del label */
+  right: -12px;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .warning-indicator {
-    width: 14px;
-    height: 14px;
-    font-size: 10px;
+    width: 12px;
+    height: 12px;
+    font-size: 8px;
+    bottom: -23px; /* Mantener la posición vertical constante */
+    right: -10px;
   }
+}
+
+/* Posicionamiento relativo al contenedor de la etiqueta */
+.flow-node__label-container .warning-indicator {
+  position: absolute;
+  right: -8px;
+  bottom: 0;
+  transform: translateY(0);
 }

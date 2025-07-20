@@ -170,10 +170,6 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
             type={data.nodeType} 
             className="flow-node__icon"
           />
-          <WarningIndicator 
-            show={!validationResult.isValid || validationResult.warnings.length > 0}
-            warnings={validationResult.warnings}
-          />
         </div>
       );
     }
@@ -183,10 +179,6 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
         <NodeIcon 
           type={data.nodeType} 
           className="flow-node__icon"
-        />
-        <WarningIndicator 
-          show={!validationResult.isValid || validationResult.warnings.length > 0}
-          warnings={validationResult.warnings}
         />
       </div>
     );
@@ -247,6 +239,10 @@ const FlowNode: React.FC<NodeProps<FlowNodeData>> = ({ id, data, selected }) => 
         <div className="flow-node__label-container">
           <div className="flow-node__label">
             {data.label || nodeConfig.label}
+            <WarningIndicator 
+              show={!validationResult.isValid || validationResult.warnings.length > 0}
+              warnings={validationResult.warnings}
+            />
           </div>
         </div>
 

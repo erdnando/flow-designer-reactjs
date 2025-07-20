@@ -117,6 +117,9 @@
   margin: 0 auto;
   /* Añadimos un resplandor sutil para separar del fondo */
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
+  /* Posición relativa para el warning indicator */
+  position: relative;
+  padding-right: 22px; /* Espacio extra para el icono de advertencia */
 }
 
 /* Adaptación para nodos diamante */
@@ -162,7 +165,7 @@
 
 .flow-node--start.flow-node--selected {
   border: none !important; /* Forzar eliminación de bordes */
-  box-shadow: 0 0 0 3px rgba(251, 60, 76, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .flow-node--end {
@@ -290,6 +293,7 @@
   /* Esto asegura que el contenido ocupe todo el espacio disponible */
   pointer-events: auto;
   padding: 0 2px;
+  
 }
 
 .flow-node__content--diamond {
@@ -314,7 +318,7 @@
   flex-shrink: 0;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
   background-color: #3b82f6;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 0px solid rgba(255, 255, 255, 0.3);
 }
 
 .flow-node--circle .flow-node__icon {
@@ -565,6 +569,7 @@
     width: 20px !important;
     height: 20px !important;
     font-size: 12px !important;
+    border: 0px solid transparent;
   }
   
   .flow-node__title {

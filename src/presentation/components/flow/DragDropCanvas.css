@@ -10,7 +10,7 @@
 
 /* Viewport highlighting */
 .react-flow__viewport.drop-target-viewport {
-  box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.2) !important;
+  box-shadow: inset 0 0 0px rgba(59, 130, 246, 0.2) !important;
 }
 
 /* Add animated indicator for drop target */

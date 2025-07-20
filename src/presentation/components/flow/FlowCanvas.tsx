@@ -90,12 +90,25 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
     }
   }, []);
 
-  // Controlador para seleccionar nodo al hacer clic
-  const handleNodeClick = useCallback((event: React.MouseEvent, node: any) => {
-    // Asegurar la selección explícita del nodo
-    selectNode(node.id);
-    // También actualizar la selección unificada
-    actions.selectNode(node.id);
+  // Controlador para cambios de selección en React Flow (PRINCIPAL)
+  const handleSelectionChange = useCallback((selection: { nodes: any[]; edges: any[] }) => {
+    // Log removed to prevent infinite loops during selection
+    // console.log('🔧 Selection changed:', selection);
+    
+    if (selection.nodes.length > 0) {
+      // Seleccionar el primer nodo si hay varios seleccionados
+      const selectedNodeId = selection.nodes[0].id;
+      // Log removed to prevent spam during selection events
+      selectNode(selectedNodeId);
+      actions.selectNode(selectedNodeId);
+    } else if (selection.edges.length > 0) {
+      // Seleccionar la primera conexión si hay varias seleccionadas
+      actions.selectConnection(selection.edges[0].id);
+    } else {
+      // No hay nada seleccionado
+      selectNode(null);
+      actions.selectFlow();
+    }
   }, [selectNode, actions]);
 
   const handlePaneClick = useCallback(() => {
@@ -192,8 +205,8 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         onDragOver={onDragOver}
         onPaneClick={handlePaneClick}
         onInit={onInit}
-        onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
+        onSelectionChange={handleSelectionChange}
         onMove={handleViewportChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

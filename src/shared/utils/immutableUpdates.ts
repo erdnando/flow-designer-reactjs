@@ -68,19 +68,31 @@ export const updateNodeImmutable = async (
   nodeId: string,
   updates: Partial<Node>
 ): Promise<Flow> => {
+  console.log('🔧 updateNodeImmutable called:', { nodeId, updates });
+  
   if (isFeatureEnabled('IMMUTABLE_STATE')) {
     return updateFlowImmutable(flow, (draft) => {
       const node = draft.nodes.find(n => n.id === nodeId);
       if (node) {
+        console.log('🔧 Found node to update:', node);
         Object.assign(node, updates);
+        console.log('🔧 Node after update:', node);
       }
       draft.updatedAt = new Date();
     });
   } else {
+    console.log('🔧 Using traditional method');
     // Método tradicional actual - crear nueva instancia de Flow
-    const updatedNodes = flow.nodes.map(node =>
-      node.id === nodeId ? new Node({ ...node, ...updates }) : node
-    );
+    const updatedNodes = flow.nodes.map(node => {
+      if (node.id === nodeId) {
+        console.log('🔧 Original node:', node);
+        console.log('🔧 Updates to apply:', updates);
+        const updatedNode = new Node({ ...node, ...updates });
+        console.log('🔧 Updated node:', updatedNode);
+        return updatedNode;
+      }
+      return node;
+    });
     
     // Crear nueva instancia de Flow con los nodos actualizados
     const updatedFlow = new Flow({
@@ -95,6 +107,7 @@ export const updateNodeImmutable = async (
     });
     
     updatedFlow.updatedAt = new Date();
+    console.log('🔧 Final updated flow:', updatedFlow);
     return updatedFlow;
   }
 };

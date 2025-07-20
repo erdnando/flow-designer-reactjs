@@ -226,7 +226,6 @@ interface FlowProviderProps {
 }
 
 export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
-  logger.debug('FlowProvider: Component initializing...');
   const [state, dispatch] = useReducer(flowReducer, initialState);
   const { showWarning } = useNotificationHelpers();
   
@@ -240,7 +239,6 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
   const persistenceService = useMemo(() => new FlowPersistenceService(), []);
   
   const flowService = useMemo(() => {
-    logger.debug('FlowProvider: Creating flowService...');
     try {
       const flowRepository = new InMemoryFlowRepository();
       const service = new FlowService(flowRepository);
@@ -522,20 +520,26 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
     }, [flowService, state, dispatch, showWarning]),
 
     updateNode: useCallback(async (nodeId: string, updates: Partial<Node>) => {
+      console.log('🔧 FlowContext.updateNode called:', { nodeId, updates });
       if (!state.currentFlow) return;
       
       try {
         // 🔄 Usar sistema inmutable para actualizaciones
+        console.log('🔧 Current flow before update:', state.currentFlow.id);
         const updatedFlow = await updateNodeImmutable(state.currentFlow, nodeId, updates);
+        console.log('🔧 Updated flow created');
         
         // Persistir cambios
         await flowService.updateNode(updatedFlow.id, nodeId, updates);
+        console.log('🔧 Changes persisted');
         
         // Actualizar estado
         dispatch({ type: 'SET_CURRENT_FLOW', payload: updatedFlow });
+        console.log('🔧 State updated via dispatch');
         
         logger.success('✅ Node updated successfully with immutable system');
       } catch (error) {
+        console.error('❌ Error in updateNode:', error);
         logger.error('❌ Error updating node:', error);
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
       }

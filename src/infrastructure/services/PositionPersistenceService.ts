@@ -14,11 +14,31 @@ export interface PersistedFlowLayout {
 
 export class PositionPersistenceService {
   private readonly storageKey = 'flow-designer-positions';
+  private saveTimeouts = new Map<string, NodeJS.Timeout>();
+  private readonly SAVE_DEBOUNCE_MS = 500; // Debounce saves por 500ms
 
   /**
-   * Guardar las posiciones de los nodos de un flujo
+   * Guardar las posiciones de los nodos de un flujo (con debouncing)
    */
   saveFlowPositions(flowId: string, positions: Map<string, Position>): void {
+    // Cancelar timeout anterior si existe
+    if (this.saveTimeouts.has(flowId)) {
+      clearTimeout(this.saveTimeouts.get(flowId)!);
+    }
+
+    // Programar nuevo save con debounce
+    const timeout = setTimeout(() => {
+      this.performSave(flowId, positions);
+      this.saveTimeouts.delete(flowId);
+    }, this.SAVE_DEBOUNCE_MS);
+
+    this.saveTimeouts.set(flowId, timeout);
+  }
+
+  /**
+   * Realizar el save real (método privado)
+   */
+  private performSave(flowId: string, positions: Map<string, Position>): void {
     try {
       const persistedPositions: PersistedPosition[] = Array.from(positions.entries()).map(([nodeId, position]) => ({
         nodeId,
@@ -40,6 +60,7 @@ export class PositionPersistenceService {
 
       localStorage.setItem(this.storageKey, JSON.stringify(updatedData));
       
+      // OPTIMIZACIÓN: Solo loggear saves no-frecuentes para reducir spam
       console.log('💾 Positions saved for flow:', flowId, 'Positions count:', persistedPositions.length);
     } catch (error) {
       console.error('❌ Error saving positions:', error);
@@ -64,7 +85,8 @@ export class PositionPersistenceService {
         positionsMap.set(nodeId, position);
       });
 
-      console.log('📖 Loaded positions for flow:', flowId, 'Positions count:', positionsMap.size);
+      // Log removed to prevent infinite loops
+      // console.log('📖 Loaded positions for flow:', flowId, 'Positions count:', positionsMap.size);
       return positionsMap;
     } catch (error) {
       console.error('❌ Error loading positions:', error);

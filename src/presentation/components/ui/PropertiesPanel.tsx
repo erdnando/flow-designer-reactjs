@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFlowContext } from '../../context/FlowContext';
-import { PersistenceStats } from './PersistenceStats';
 import { FlowPropertiesForm, NodePropertiesForm, ConnectionPropertiesForm } from './forms';
 import { Flow } from '../../../domain/entities/Flow';
 import { Node as FlowNode } from '../../../domain/entities/Node';
@@ -77,6 +76,23 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ className }) => {
              selection.type === 'node' ? 'Nodo' : 
              'Conexión'}
           </span>
+        )}
+        {selection.type === 'node' && selectedData && (
+          <div className="properties-panel__node-type">
+            <div className={`properties-panel__node-icon properties-panel__node-icon--${(selectedData as FlowNode).type}`}>
+              {(selectedData as FlowNode).type === 'start' ? '▶' :
+               (selectedData as FlowNode).type === 'end' ? '■' :
+               (selectedData as FlowNode).type === 'if' ? '◆' : '●'}
+            </div>
+            <div className="properties-panel__node-info">
+              <div className="properties-panel__node-label">
+                {(selectedData as FlowNode).data?.label || 
+                 (selectedData as FlowNode).name || 
+                 `Nodo ${(selectedData as FlowNode).type}`}
+              </div>
+              <div className="properties-panel__node-id">{(selectedData as FlowNode).id}</div>
+            </div>
+          </div>
         )}
       </div>
 

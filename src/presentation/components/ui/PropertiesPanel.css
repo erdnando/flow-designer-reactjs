@@ -23,6 +23,19 @@
   text-transform: none;
 }
 
+.properties-panel__type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #4a5568;
+  color: #e2e8f0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
 .properties-panel__description {
   margin: 0;
   font-size: 12px;
@@ -85,6 +98,22 @@
   flex-shrink: 0;
 }
 
+.properties-panel__node-icon--start {
+  background: #38a169;
+}
+
+.properties-panel__node-icon--end {
+  background: #e53e3e;
+}
+
+.properties-panel__node-icon--step {
+  background: #3182ce;
+}
+
+.properties-panel__node-icon--if {
+  background: #d69e2e;
+}
+
 .properties-panel__node-info {
   flex: 1;
 }
@@ -138,6 +167,69 @@
 .properties-panel__input::placeholder,
 .properties-panel__textarea::placeholder {
   color: #718096;
+}
+
+/* Estilos para validación de nombres */
+.input-group {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.input-group .form-input {
+  flex: 1;
+}
+
+.form-input--error {
+  border-color: #e53e3e !important;
+  box-shadow: 0 0 0 2px rgba(229, 62, 62, 0.2) !important;
+}
+
+.form-error {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #fed7d7;
+  line-height: 1.4;
+}
+
+.form-suggestion {
+  color: #90cdf4;
+  font-style: italic;
+}
+
+.btn {
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.btn--small {
+  padding: 6px 12px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.btn--secondary {
+  background: #4a5568;
+  color: #e2e8f0;
+  border: 1px solid #718096;
+}
+
+.btn--secondary:hover {
+  background: #2d3748;
+  border-color: #a0aec0;
+  color: #f7fafc;
+}
+
+.btn--secondary:active {
+  transform: scale(0.98);
 }
 
 .properties-panel__textarea {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { useReactFlow, useNodesState, useEdgesState } from 'reactflow';
 import { useFlowContext } from '../context/FlowContext';
 import { useConnectionValidation } from './useConnectionValidation';
@@ -88,7 +88,6 @@ const determineFinalPosition = (
   if (persistedPosition) {
     const validatedPosition = validateAndRoundPosition(persistedPosition);
     if (validatedPosition) {
-      logger.debug(`Using persisted position for node ${nodeId}:`, validatedPosition);
       return validatedPosition;
     }
   }
@@ -96,14 +95,12 @@ const determineFinalPosition = (
   // SEGUNDO, usar la referencia actual si existe
   const existingPosition = positionsRef.current.get(nodeId);
   if (existingPosition) {
-    logger.debug(`Using position from ref for node ${nodeId}:`, existingPosition);
     return existingPosition;
   }
   
   // TERCERO, usar la posición del estado (modelo de dominio) si es válida
   const validatedStatePos = validateAndRoundPosition(statePosition);
   if (validatedStatePos) {
-    logger.debug(`Using state position for node ${nodeId}:`, validatedStatePos);
     return validatedStatePos;
   }
   
@@ -118,7 +115,6 @@ const determineFinalPosition = (
   const x = 100 + (seed % 5) * 150; // Distribuir horizontalmente
   const y = 100 + Math.floor((seed % 25) / 5) * 150; // Distribuir verticalmente en 5 filas
   
-  logger.debug(`No position found for node ${nodeId}, using calculated position:`, { x, y });
   return { x, y };
 };
 
@@ -215,15 +211,49 @@ export const useFlowDesigner = () => {
   // CORRECCIÓN: Flag para depuración
   const initialRenderCompleteRef = useRef(false);
   
+  // Función para calcular un signature de los datos importantes de los nodos
+  const getNodesSignature = useCallback(() => {
+    if (!state.currentFlow?.nodes) return '';
+    return state.currentFlow.nodes.map(node => {
+      // Manejar updatedAt de forma segura
+      let timestamp = 0;
+      if (node.updatedAt) {
+        if (typeof node.updatedAt.getTime === 'function') {
+          timestamp = node.updatedAt.getTime();
+        } else if (typeof node.updatedAt === 'number') {
+          timestamp = node.updatedAt;
+        } else if (typeof node.updatedAt === 'string') {
+          timestamp = new Date(node.updatedAt).getTime() || 0;
+        }
+      }
+      // Incluir más propiedades para detectar cambios mejor
+      const dataProps = node.data ? JSON.stringify(node.data) : '';
+      return `${node.id}:${node.data?.label || ''}:${node.type}:${timestamp}:${dataProps}`;
+    }).join('|');
+  }, [state.currentFlow?.nodes]);
+
+  // Agregar un counter para forzar re-renders cuando sea necesario
+  const [forceUpdateCounter, setForceUpdateCounter] = useState(0);
+  
+  // Detectar cuando el estado cambia y forzar actualización si es necesario
+  useEffect(() => {
+    if (state.currentFlow) {
+      setForceUpdateCounter((prev: number) => prev + 1);
+    }
+  }, [state.currentFlow]);
+  
+  // Calcular signature actual para forzar recálculo cuando cambien los datos
+  const currentNodesSignature = getNodesSignature();
+  
+  // DEBUG: Agregar log para ver cuando cambia la signature
+  const previousSignatureRef = useRef(currentNodesSignature);
+  if (previousSignatureRef.current !== currentNodesSignature) {
+    previousSignatureRef.current = currentNodesSignature;
+  }
+  
   // Convertir entidades del dominio a formato React Flow
   const initialNodes: FlowNode[] = useMemo(() => {
-    // CORRECCIÓN: Mejor diagnóstico
-    const renderCount = initialRenderCompleteRef.current ? 'ACTUALIZACIÓN' : 'PRIMERA RENDERIZACIÓN';
-    logger.info(`🔍 ${renderCount}: Convirtiendo nodos del dominio a React Flow`);
-    logger.debug('Current flow exists:', !!state.currentFlow);
-    
     if (!state.currentFlow) {
-      logger.debug('No current flow, returning empty array');
       return [];
     }
     
@@ -243,34 +273,13 @@ export const useFlowDesigner = () => {
     // Usar directamente los nodos únicos (ya filtrados por ID)
     const validNodes = Array.from(uniqueNodesMap.values());
     
-    // CORRECCIÓN: Diagnóstico detallado
-    const nodeIds = validNodes.map(n => n.id).join(', ');
-    logger.info(`📋 Flow nodes count: ${validNodes.length}, IDs: [${nodeIds}]`);
-    logger.debug('Flow nodes details:', validNodes);
-    
     // Cargar posiciones persistidas
     const persistedPositions = positionPersistence.loadFlowPositions(state.currentFlow.id);
-    logger.debug('Loaded persisted positions:', persistedPositions.size);
     
     // Determinar si es la primera carga del flujo
     const isInitialLoad = !initialRenderCompleteRef.current;
-    if (isInitialLoad) {
-      logger.info('🔄 Initial load detected - prioritizing persisted positions to preserve last known layout');
-    }
-    
-    // Precargar y verificar posiciones persistidas
-    logger.debug(`Loaded ${persistedPositions.size} persisted positions`);
-    if (persistedPositions.size > 0) {
-      // Log a sample of persisted positions
-      const sampleNodeId = Array.from(persistedPositions.keys())[0];
-      if (sampleNodeId) {
-        logger.debug(`Sample persisted position for node ${sampleNodeId}:`, persistedPositions.get(sampleNodeId));
-      }
-    }
     
     const converted = validNodes.map(node => {
-      logger.debug('Converting node:', node);
-      
       // FASE 3: Usar la función determineFinalPosition para obtener la posición final
       const finalPosition = determineFinalPosition(
         node.id, 
@@ -280,13 +289,10 @@ export const useFlowDesigner = () => {
         isInitialLoad
       );
       
-      logger.debug(`Node ${node.id} - State position:`, node.position, 
-                  'Ref position:', nodePositionsRef.current.get(node.id), 
-                  'Persisted position:', persistedPositions.get(node.id), 
-                  'Final position:', finalPosition);
-      
       // Guardar la posición calculada en nuestro ref
       nodePositionsRef.current.set(node.id, finalPosition);
+      
+      const isSelected = node.id === state.selectedNodeId;
       
       return {
         id: node.id,
@@ -298,31 +304,23 @@ export const useFlowDesigner = () => {
           onNodeClick: (nodeId: string) => actions.selectNode(nodeId),
           onNodeDelete: (nodeId: string) => actions.removeNode(nodeId)
         },
-        selected: node.selected,
+        selected: isSelected, // Usar selectedNodeId del estado para sincronización
         // Asegurar que los nodos sean arrastrables
         draggable: true
       };
     });
     
-    logger.success(`Converted nodes: ${converted.length} nodos procesados`);
-    
     // Marcar la renderización inicial como completada
     initialRenderCompleteRef.current = true;
     
     return converted;
-  }, [state.currentFlow, actions, positionPersistence]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.currentFlow, actions, positionPersistence, currentNodesSignature, forceUpdateCounter]);
 
   const initialEdges: FlowEdge[] = useMemo(() => {
-    logger.debug('useFlowDesigner: Converting connections to edges...');
-    logger.debug('Current flow exists:', !!state.currentFlow);
-    
     if (!state.currentFlow) {
-      logger.debug('No current flow, returning empty edges array');
       return [];
     }
-    
-    logger.debug('Flow connections count:', state.currentFlow.connections.length);
-    logger.debug('Flow connections:', state.currentFlow.connections);
     
     // Filtrar cualquier conexión que tenga nodos inexistentes
     const validNodeIds = state.currentFlow.nodes.map(node => node.id);
@@ -336,7 +334,6 @@ export const useFlowDesigner = () => {
     }
     
     const converted = validConnections.map(connection => {
-      logger.debug('Converting connection to edge:', connection);
       return {
         id: connection.id,
         source: connection.sourceNodeId,
@@ -355,7 +352,6 @@ export const useFlowDesigner = () => {
       };
     });
     
-    logger.success('Converted edges:', converted);
     return converted;
   }, [state.currentFlow]); // CORRECCIÓN: Mantener dependencia completa para asegurar recálculo
 
@@ -379,17 +375,11 @@ export const useFlowDesigner = () => {
       logger.info('🔰 PRIMERA RENDERIZACIÓN DETECTADA - Siempre permitir sincronización');
       isFirstRenderRef.current = false;
     } else if (isSyncingRef.current) {
-      logger.debug('Already syncing, skipping nodes sync');
       return;
     }
 
-    logger.debug('Syncing nodes with state...');
-    logger.debug('Current nodes count:', nodes.length);
-    logger.debug('Initial nodes count:', initialNodes.length);
-    
     // ANTI-FANTASMAS: Detectar y eliminar nodos que existen en la UI pero no en el estado
     if (!isInitialRender) {
-      logger.info('🔍 VALIDACIÓN DE NODOS: Verificando integridad del canvas');
       
       // Extraer los IDs de nodos del estado para poder filtrar
       const validNodeIds = new Set(initialNodes.map(n => n.id));
@@ -452,21 +442,8 @@ export const useFlowDesigner = () => {
       }))
     );
     
-    const currentNodesSignature = JSON.stringify(
-      nodes.map(n => ({ 
-        id: n.id, 
-        x: n.position ? Math.round(n.position.x) : 0, 
-        y: n.position ? Math.round(n.position.y) : 0 
-      }))
-    );
-    
-    logger.debug('Last synced nodes signature:', lastSyncedNodesRef.current);
-    logger.debug('Current nodes signature:', currentNodesSignature);
-    logger.debug('Initial nodes signature:', initialNodesSignature);
-    
     // CASO ESPECIAL 1: Primera renderización - forzar sincronización
     if (isInitialRender && initialNodes.length > 0) {
-      logger.info('🔄 Primera renderización con nodos existentes - forzando sincronización');
       
       // Aplicar los nodos iniciales directamente
       setNodes(initialNodes);
@@ -480,7 +457,6 @@ export const useFlowDesigner = () => {
     // CASO ESPECIAL 2: Carga inicial - si hay nodos para mostrar pero el canvas está vacío
     // Este caso resuelve el problema de nodos que no aparecen al cargar la página
     if (initialNodes.length > 0 && nodes.length === 0) {
-      logger.info('🔄 Initial load detected, forcing node sync (FIX for missing nodes)');
       isSyncingRef.current = true;
       
       // FASE 3: Usar la función de validación para actualizar posiciones durante carga inicial
@@ -514,15 +490,17 @@ export const useFlowDesigner = () => {
     // Verificar si las firmas son diferentes (puede indicar un refresh o cambios de posición)
     const signaturesDiffer = lastSyncedNodesRef.current !== initialNodesSignature;
     
-    logger.debug(`Detección de cambios: Estructurales=${hasStructuralChanges}, Firmas coinciden=${initialNodesSignature === currentNodesSignature}`);
-    
-    logger.debug('Has structural changes:', hasStructuralChanges);
-    logger.debug('Signatures differ:', signaturesDiffer);
-    
-    // CORRECCIÓN: Si hay cambios estructurales O las firmas son diferentes, sincronizar
-    if ((hasStructuralChanges || signaturesDiffer) && !isSyncingRef.current) {
-      logger.info(`⚙️ Sincronizando nodos: ${hasStructuralChanges ? 'Cambios estructurales' : 'Firmas diferentes'}`);
+    // NUEVO: Detectar cambios de contenido (labels, datos internos) - OPTIMIZADO
+    const hasContentChanges = initialNodes.some(initialNode => {
+      const currentNode = nodes.find(n => n.id === initialNode.id);
+      if (!currentNode) return true; // Nodo nuevo
       
+      // Comparar solo el label para evitar comparaciones complejas durante typing
+      return currentNode.data?.label !== initialNode.data?.label;
+    });
+    
+    // CORRECCIÓN: Si hay cambios estructurales, de firmas O de contenido, sincronizar
+    if ((hasStructuralChanges || signaturesDiffer || hasContentChanges) && !isSyncingRef.current) {
       isSyncingRef.current = true;
       
       // FASE 3: Usar la función de validación para actualizar posiciones durante sincronización
@@ -546,8 +524,6 @@ export const useFlowDesigner = () => {
           isSyncingRef.current = false;
         }, 150);
       }, 50);
-    } else {
-      logger.debug('No structural changes or already synced, skipping');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialNodes, setNodes]);
@@ -556,7 +532,6 @@ export const useFlowDesigner = () => {
   useEffect(() => {
     // Solo ejecutar cuando tenemos un flujo actual
     if (state.currentFlow) {
-      logger.info('🔍 VALIDACIÓN DE NODOS: Verificando integridad de nodos en el flujo');
       
       // Eliminar duplicados y asegurar sincronización completa
       if (state.currentFlow.nodes.length > 0) {
@@ -572,8 +547,32 @@ export const useFlowDesigner = () => {
           logger.info(`Original: ${state.currentFlow.nodes.length} nodos, Sin duplicados: ${uniqueNodesMap.size} nodos`);
         }
         
+        // NUEVO: Detectar si los nodos han desaparecido y forzar recuperación
+        if (nodes.length === 0 && initialNodes.length > 0) {
+          logger.error('🚨 NODOS DESAPARECIDOS: Forzando recuperación inmediata');
+          
+          // Desactivar todos los bloqueos
+          isSyncingRef.current = false;
+          
+          // Forzar aplicación inmediata de nodos
+          setTimeout(() => {
+            logger.info('🔄 RECUPERACIÓN: Aplicando nodos forzadamente');
+            setNodes(initialNodes);
+            
+            // Actualizar firma para evitar loops
+            const recoverySignature = JSON.stringify(
+              initialNodes.map(n => ({ 
+                id: n.id, 
+                x: n.position ? Math.round(n.position.x) : 0, 
+                y: n.position ? Math.round(n.position.y) : 0 
+              }))
+            );
+            lastSyncedNodesRef.current = recoverySignature;
+          }, 100);
+        }
+        
         // Si no hay nodos visibles pero deberían haberlos, forzar visualización
-        if (nodes.length === 0 || nodes.length !== uniqueNodesMap.size) {
+        else if (nodes.length === 0 || nodes.length !== uniqueNodesMap.size) {
           logger.info('🔍 DETECCIÓN DE SEGURIDAD: Discrepancia entre nodos visibles y del flujo, forzando visualización');
           
           // Desactivar cualquier bloqueo previo
@@ -599,7 +598,7 @@ export const useFlowDesigner = () => {
     }
   // Solo ejecutar cuando cambie el currentFlow o si hay un cambio en la cantidad de nodos
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentFlow, nodes.length]);
+  }, [state.currentFlow, nodes.length, initialNodes.length]);
   
   // NUEVA SOLUCIÓN: Efecto específico para forzar refresco visual después de eliminaciones
   useEffect(() => {
@@ -762,8 +761,11 @@ export const useFlowDesigner = () => {
     );
     const isDragOperation = isDragging || hasDragChanges;
     
-    // OPTIMIZACIÓN: Logging reducido durante drag para evitar spam
-    if (!isDragOperation) {
+    // OPTIMIZACIÓN: Detectar cambios de dimensiones masivos automáticos
+    const hasMultipleDimensionChanges = changes.filter(c => c.type === 'dimensions').length > 3;
+    
+    // OPTIMIZACIÓN: Logging reducido durante drag Y cuando hay cambios de dimensiones masivos
+    if (!isDragOperation && !hasMultipleDimensionChanges) {
       logger.debug('===== NUCLEAR INTERCEPTOR =====');
       logger.debug('Raw changes received:', changes);
       logger.debug('Currently dragging nodes:', Array.from(draggingNodesRef.current));
@@ -772,8 +774,8 @@ export const useFlowDesigner = () => {
     
     // SUPER AGRESIVO: Bloquear CUALQUIER cambio que pueda afectar la posición
     const authorizedChanges = changes.filter(change => {
-      // OPTIMIZACIÓN: Solo loggear análisis durante no-drag para evitar spam
-      if (!isDragOperation) {
+      // OPTIMIZACIÓN: Solo loggear análisis cuando no hay drag Y no hay cambios masivos de dimensiones
+      if (!isDragOperation && !hasMultipleDimensionChanges) {
         logger.debug('Analyzing change:', change);
       }
       
@@ -855,7 +857,10 @@ export const useFlowDesigner = () => {
             }
             return true;
           } else {
-            logger.error('UNAUTHORIZED: Drag end for node not being dragged:', change.id);
+            // Cambio de error a warning - puede ser desincronización temporal
+            logger.warn('DESYNC: Drag end for node not in dragging set:', change.id);
+            // Limpiar el nodo del set por si acaso
+            draggingNodesRef.current.delete(change.id);
             return false;
           }
         }
@@ -867,8 +872,11 @@ export const useFlowDesigner = () => {
       // BLOQUEAR cambios de dimensiones que no estén relacionados con arrastre
       if (change.type === 'dimensions') {
         if (change.dragging === undefined) {
-          // Cambiado de error a debug ya que es comportamiento esperado del interceptor
-          logger.debug('NUCLEAR BLOCK: Automatic dimensions change for node:', change.id);
+          // OPTIMIZACIÓN: Silenciar log de dimensiones automáticas para reducir spam
+          // Solo loggear si hay muy pocos cambios para evitar spam masivo
+          if (changes.length <= 2) {
+            logger.debug('NUCLEAR BLOCK: Automatic dimensions change for node:', change.id);
+          }
           return false;
         }
         logger.success('AUTHORIZED: Dimensions change during drag for node:', change.id);
@@ -886,8 +894,8 @@ export const useFlowDesigner = () => {
       return false;
     });
     
-    // OPTIMIZACIÓN: Solo loggear cambios autorizados cuando no hay drag
-    if (!isDragging) {
+    // OPTIMIZACIÓN: Solo loggear cambios autorizados cuando no hay drag Y no hay cambios masivos
+    if (!isDragOperation && !hasMultipleDimensionChanges) {
       logger.debug('Authorized changes:', authorizedChanges);
     }
     
@@ -992,8 +1000,8 @@ export const useFlowDesigner = () => {
       }
     });
     
-    // OPTIMIZACIÓN: Solo loggear end cuando no hay drag
-    if (!isDragging) {
+    // OPTIMIZACIÓN: Solo loggear end cuando no hay drag Y no hay cambios masivos de dimensiones
+    if (!isDragOperation && !hasMultipleDimensionChanges) {
       logger.debug('===== END NUCLEAR INTERCEPTOR =====');
     }
   }, [onNodesChange, actions, nodes, setNodes, positionPersistence, state.currentFlow]);
@@ -1478,7 +1486,7 @@ export const useFlowDesigner = () => {
       // Solo guardar si hay posiciones para persistir
       if (positions.size > 0) {
         positionPersistence.saveFlowPositions(state.currentFlow.id, positions);
-        logger.debug(`📍 Persistidas ${positions.size} posiciones de nodos en localStorage`);
+        // Log removido para evitar duplicación con PositionPersistenceService
       }
     } catch (error) {
       logger.error('❌ Error persistiendo posiciones:', error);

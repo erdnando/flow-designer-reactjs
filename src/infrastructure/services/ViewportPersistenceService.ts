@@ -61,7 +61,8 @@ export class ViewportPersistenceService {
       const flowViewport = allViewports[flowId];
       
       if (flowViewport) {
-        console.log('📂 Loaded viewport for flow:', flowId, 'Viewport:', flowViewport.viewport);
+        // Log removed to prevent infinite loops
+        // console.log('📂 Loaded viewport for flow:', flowId, 'Viewport:', flowViewport.viewport);
         return {
           x: flowViewport.viewport.x,
           y: flowViewport.viewport.y,

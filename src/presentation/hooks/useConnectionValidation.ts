@@ -192,8 +192,28 @@ export const useConnectionValidation = () => {
         return { valid: false, message };
       }
     } else {
-      // Nodos END pueden tener múltiples conexiones entrantes
-      console.log(`✅ Nodo END puede recibir múltiples conexiones`);
+      // Nodos END pueden tener múltiples conexiones entrantes pero con restricciones
+      console.log(`✅ Nodo END puede recibir múltiples conexiones con restricciones`);
+      
+      // REGLA 8: Un nodo IF no puede conectar ambos handlers (true y false) al mismo nodo END
+      if (sourceNode.type === 'if') {
+        // Identificar el handler que está intentando conectar
+        const currentHandleId = sourceHandle || 'default';
+        
+        // Buscar si ya existe una conexión desde otro handler del mismo nodo IF hacia este END
+        const existingIfConnections = edges.filter(e => 
+          getSourceId(e) === sourceId && // Mismo nodo IF origen
+          getTargetId(e) === targetId && // Mismo nodo END destino
+          (e.sourceHandle || 'default') !== currentHandleId // Diferente handler
+        );
+        
+        if (existingIfConnections.length > 0) {
+          console.error('❌ El nodo IF ya tiene una conexión hacia este nodo END desde otro handler');
+          const message = "Un nodo IF no puede conectar ambos handlers (Sí/No) al mismo nodo END";
+          showConnectionError(message);
+          return { valid: false, message };
+        }
+      }
     }
     
     // Si llegamos aquí, la conexión es válida

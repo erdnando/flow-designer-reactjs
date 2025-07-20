@@ -107,13 +107,19 @@ const compatibilityMatrix: Record<string, string[]> = {
 
 **Nodos START**: No pueden tener conexiones entrantes
 **Nodos STEP/IF**: Solo una conexión entrante por handle
-**Nodos END**: Pueden tener múltiples conexiones entrantes
+**Nodos END**: Pueden tener múltiples conexiones entrantes, con restricciones (ver regla 9)
 
 ### 8. Validación de Handles de Nodos IF
 
 **Regla**: Los nodos IF solo pueden usar handles 'true' o 'false' para salidas.
 
 **Implementación**: Verificación de `['true', 'false'].includes(sourceHandle)`
+
+### 9. Restricción de Conexión de Nodos IF a END
+
+**Regla**: Un nodo IF no puede conectar ambos handlers ('true' y 'false') al mismo nodo END.
+
+**Implementación**: Cuando se intenta conectar un nodo IF a un nodo END, se verifica si ya existe una conexión desde otro handler del mismo nodo IF hacia ese mismo nodo END.
 
 ## Feedback al Usuario
 
@@ -210,6 +216,12 @@ El sistema está diseñado para ser fácil de probar:
 **Solución**: Verificar que las dependencias de `useCallback` estén correctas
 
 ## Historial de Cambios
+
+### v1.1.0 (Mejora de Validación de Nodos IF)
+
+- ✅ Nueva regla: Un nodo IF no puede conectar ambos handlers ('true' y 'false') al mismo nodo END
+- ✅ Mensajes de error mejorados para esta validación
+- ✅ Documentación actualizada con la nueva regla
 
 ### v1.0.0 (Implementación Inicial)
 

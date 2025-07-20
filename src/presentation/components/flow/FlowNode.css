@@ -1,7 +1,7 @@
 /* Base styles - Nuevo diseño */
 .flow-node {
-  background: #2d3748;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(to bottom, #2d3748, #1a202c);
+  border: none !important; /* Usar !important para forzar sin bordes */
   border-radius: 12px;
   cursor: grab;
   position: relative;
@@ -19,10 +19,14 @@
   touch-action: none;
   backdrop-filter: blur(5px);
   color: #f8f9fa;
+  /* Añadir estilo avanzado para evitar cualquier borde en navegadores específicos */
+  outline: none !important;
+  -webkit-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  -moz-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .flow-node:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
   transform: translateY(-2px);
 }
 
@@ -36,8 +40,8 @@
 
 /* Estado seleccionado */
 .flow-node--selected {
-  /* Borde naranja para resaltar que está seleccionado */
-  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
+  /* Resplandor naranja para resaltar que está seleccionado */
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
 /* Texto del nombre en bold cuando el nodo está seleccionado */
@@ -47,8 +51,10 @@
 
 /* Estado de advertencia */
 .flow-node--warning {
-  border-color: #f6ad55;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+  /* Eliminamos border-color para mantener consistencia sin bordes */
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5), 0 4px 12px rgba(245, 158, 11, 0.2);
+  /* Agregamos un sutil resplandor amarillo */
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.3));
 }
 
 /* Contenido del nodo */
@@ -61,16 +67,26 @@
   height: 100%;
   gap: 8px;
   position: relative;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  /* Sutil brillo interno para profundidad */
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.07), 
+              inset 0 -1px 1px rgba(0, 0, 0, 0.1);
 }
 
 .flow-node__content--diamond {
   transform: rotate(-45deg);
   width: 60px;
   height: 60px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .flow-node__icon {
   margin-bottom: 4px;
+  /* Añadir sutil efecto de brillo alrededor del icono */
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.2));
 }
 
 /* Contenedor y etiqueta del nodo */
@@ -90,14 +106,17 @@
   font-weight: 500;
   text-align: center;
   color: #f8f9fa;
-  background: rgba(45, 55, 72, 0.9);
+  background: linear-gradient(to bottom, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.95));
   padding: 2px 18px;
   border-radius: 4px;
   white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  /* Eliminamos el borde gris y usamos un sutil resplandor en su lugar */
+  border: none;
   display: inline-block;
   margin: 0 auto;
+  /* Añadimos un resplandor sutil para separar del fondo */
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
 }
 
 /* Adaptación para nodos diamante */
@@ -135,40 +154,44 @@
   padding: 0;
 }
 
-/* Colores por tipo de nodo */
+/* Colores por tipo de nodo - con sombras en vez de bordes */
 .flow-node--start {
-  border-color: #38a169;
+  border: none !important; /* Forzar eliminación de bordes */
+  box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(56, 161, 105, 0.2);
 }
 
 .flow-node--start.flow-node--selected {
-  border-color: #38a169;
+  border: none !important; /* Forzar eliminación de bordes */
   box-shadow: 0 0 0 3px rgba(251, 60, 76, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .flow-node--end {
-  border-color: #e53e3e;
+  border: none !important; /* Forzar eliminación de bordes */
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(229, 62, 62, 0.2);
 }
 
 .flow-node--end.flow-node--selected {
-  border-color: #e53e3e;
+  border: none !important; /* Forzar eliminación de bordes */
   box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .flow-node--step {
-  border-color: #3182ce;
+  border: none !important; /* Forzar eliminación de bordes */
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(49, 130, 206, 0.2);
 }
 
 .flow-node--step.flow-node--selected {
-  border-color: #3182ce;
+  border: none !important; /* Forzar eliminación de bordes */
   box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .flow-node--if {
-  border-color: rgba(59, 130, 246, 0.8);
+  border: none !important; /* Forzar eliminación de bordes */
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(59, 130, 246, 0.2);
 }
 
 .flow-node--if.flow-node--selected {
-  border-color: rgba(59, 130, 246, 0.8);
+  border: none !important; /* Forzar eliminación de bordes */
   box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.8), 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -453,27 +476,33 @@
 
 /* Node type specific styles */
 .flow-node--start {
-  border-color: rgba(16, 185, 129, 0.8);
-  background: rgba(58, 58, 58, 0.95);
+  border: none !important; /* Forzar eliminación de bordes */
+  background: linear-gradient(135deg, rgba(58, 58, 58, 0.95), rgba(40, 40, 40, 0.95));
   box-shadow: 0 0 10px rgba(16, 185, 129, 0.3), 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .flow-node--step {
-  border-color: rgba(59, 130, 246, 0.8);
-  background: rgba(58, 58, 58, 0.95);
+  border: none !important; /* Forzar eliminación de bordes */
+  background: linear-gradient(135deg, rgba(58, 58, 58, 0.95), rgba(40, 40, 40, 0.95));
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .flow-node--if {
-  border-color: rgba(59, 130, 246, 0.8);
-  background: rgba(58, 58, 58, 0.95);
+  border: none !important; /* Forzar eliminación de bordes */
+  background: linear-gradient(135deg, rgba(58, 58, 58, 0.95), rgba(40, 40, 40, 0.95));
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.3), 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 .flow-node--end {
-  border-color: rgba(239, 68, 68, 0.8);
-  background: rgba(58, 58, 58, 0.95);
+  border: none !important; /* Forzar eliminación de bordes */
+  background: linear-gradient(135deg, rgba(58, 58, 58, 0.95), rgba(40, 40, 40, 0.95));
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.3), 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* React Flow overrides */
+.react-flow__node {
+  border: none !important; /* Forzar eliminación de cualquier borde en los nodos de ReactFlow */
+  background: transparent !important; /* Hacer que el fondo del contenedor del nodo sea transparente */
 }
 
 /* React Flow handle overrides */

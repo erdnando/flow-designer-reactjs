@@ -632,6 +632,15 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
         
       } catch (error) {
         console.error('❌ Error in addConnection:', error);
+        console.error('❌ Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          currentFlowId: state.currentFlow?.id,
+          sourceNodeId,
+          targetNodeId,
+          sourceHandle,
+          targetHandle
+        });
         dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Unknown error' });
       }
     }, [flowService, state.currentFlow]),

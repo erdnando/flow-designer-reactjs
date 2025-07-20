@@ -62,7 +62,9 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
     onDragOver,
     isLoading,
     selectNode,
-    isValidConnection
+    isValidConnection,
+    saveCurrentViewport,
+    hasPersistedViewport
   } = useFlowDesigner();
 
   const { actions } = useFlowContext();
@@ -98,11 +100,29 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
     actions.selectConnection(edge.id);
   }, [actions]);
 
+  // Manejar cambios del viewport para persistencia
+  const handleViewportChange = useCallback((viewport: any) => {
+    // Guardar el viewport con debounce para evitar demasiadas escrituras
+    const timeoutId = setTimeout(() => {
+      saveCurrentViewport();
+    }, 500); // Esperar 500ms después del último cambio
+
+    // Limpiar timeout anterior si hay uno
+    return () => clearTimeout(timeoutId);
+  }, [saveCurrentViewport]);
+
   const onInit = useCallback(() => {
-    // Ajustar vista inicial con zoom personalizado muy alejado
+    // Solo ajustar vista inicial si NO hay viewport persistido
     setTimeout(() => {
+      // Verificar si hay viewport persistido usando la referencia del hook
+      if (hasPersistedViewport.current) {
+        console.log('🔍 Viewport persistido encontrado en referencia, omitiendo fitView');
+        return;
+      }
+
       const flow = document.querySelector('.react-flow');
       if (flow) {
+        console.log('🎯 No hay viewport persistido, aplicando fitView');
         // Primero ajustar la vista y luego aplicar zoom extremo
         fitView({
           minZoom: CANVAS_CONFIG.ZOOM_MIN,
@@ -118,7 +138,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         }
       }
     }, 200);
-  }, [fitView]);
+  }, [fitView, hasPersistedViewport]);
 
   if (isLoading) {
     return (
@@ -163,6 +183,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         onInit={onInit}
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
+        onMove={handleViewportChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
@@ -200,7 +221,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({ className }) => {
         // Configuraciones de zoom y pan
         minZoom={CANVAS_CONFIG.ZOOM_MIN}
         maxZoom={CANVAS_CONFIG.ZOOM_MAX}
-        defaultViewport={{ x: 0, y: 0, zoom: CANVAS_CONFIG.DEFAULT_ZOOM }}
+        // defaultViewport={{ x: 0, y: 0, zoom: CANVAS_CONFIG.DEFAULT_ZOOM }}
       >
         <Background
           variant={"dots" as any}

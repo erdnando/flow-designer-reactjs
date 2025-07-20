@@ -34,6 +34,18 @@ export class InMemoryFlowRepository implements FlowRepository {
       // Buscar primero en memoria
       let flow = this.flows.get(id) || null;
       
+      // Verificar si el flujo en memoria es válido
+      if (flow) {
+        logger.debug('Flow found in memory, checking validity...');
+        if (typeof flow.addConnection !== 'function') {
+          logger.error('Flow in memory is not a valid instance, removing and will reload...');
+          this.flows.delete(id);
+          flow = null;
+        } else {
+          logger.debug('Flow in memory is valid');
+        }
+      }
+      
       // MEJORA: Si no se encuentra en memoria, intentar cargarlo desde localStorage
       if (!flow) {
         logger.warn('Flujo no encontrado en memoria, intentando cargar desde localStorage:', id);
@@ -50,7 +62,28 @@ export class InMemoryFlowRepository implements FlowRepository {
           // Si se encontró, guardarlo en memoria para futuras consultas
           if (flow) {
             logger.success('Flujo recuperado desde localStorage:', id);
-            this.flows.set(id, flow);
+            
+            // Verificar que sea una instancia válida de Flow
+            if (typeof flow.addConnection === 'function') {
+              logger.success('Loaded flow is a valid Flow instance');
+              this.flows.set(id, flow);
+            } else {
+              logger.error('El flujo cargado no es una instancia válida de Flow, recreando...');
+              // Recrear como una instancia válida de Flow si es necesario
+              const validFlow = new Flow({
+                id: flow.id,
+                name: flow.name || 'Unnamed Flow',
+                description: flow.description || '',
+                nodes: flow.nodes || [],
+                connections: flow.connections || [],
+                status: flow.status || 'draft',
+                owner: flow.owner || '',
+                creator: flow.creator || flow.owner || ''
+              });
+              logger.success('Recreated valid Flow instance');
+              this.flows.set(id, validFlow);
+              flow = validFlow;
+            }
           }
         } catch (loadError) {
           logger.error('Error al intentar cargar flujo desde localStorage:', loadError);
@@ -59,6 +92,7 @@ export class InMemoryFlowRepository implements FlowRepository {
       }
       
       logger.debug('Flow found:', !!flow);
+      logger.debug('Flow has addConnection method:', flow ? typeof flow.addConnection === 'function' : false);
       return flow;
     } catch (error) {
       logger.error('Error in getFlowById:', error);

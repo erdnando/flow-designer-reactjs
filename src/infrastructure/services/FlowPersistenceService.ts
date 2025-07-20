@@ -27,6 +27,9 @@ export class FlowPersistenceService {
         id: flow.id,
         name: flow.name,
         description: flow.description,
+        status: flow.status || 'draft',
+        owner: flow.owner || '',
+        creator: flow.creator || flow.owner || '',
         nodes: flow.nodes.map(node => ({
           id: node.id,
           type: node.type, // NodeType es un tipo string, no un objeto con propiedad value
@@ -72,13 +75,6 @@ export class FlowPersistenceService {
       
       const flowData = JSON.parse(serialized);
       
-      // Recrear entidades del dominio
-      const flow = new Flow({
-        id: flowData.id,
-        name: flowData.name,
-        description: flowData.description
-      });
-      
       // Recrear nodos
       const nodes = flowData.nodes.map((nodeData: any) => {
         // Asegurarse de que data contenga label (nombre) y description
@@ -95,8 +91,6 @@ export class FlowPersistenceService {
           position: nodeData.position || { x: 0, y: 0 }
         });
         
-        // No necesitamos llamar a updatePosition ya que pasamos la posición en el constructor
-        
         return node;
       });
       
@@ -112,9 +106,17 @@ export class FlowPersistenceService {
         });
       });
       
-      // Asignar nodos y conexiones al flujo
-      flow.nodes = nodes;
-      flow.connections = connections;
+      // Recrear entidades del dominio con todos los datos
+      const flow = new Flow({
+        id: flowData.id,
+        name: flowData.name,
+        description: flowData.description,
+        nodes: nodes,
+        connections: connections,
+        status: flowData.status || 'draft',
+        owner: flowData.owner || '',
+        creator: flowData.creator || flowData.owner || ''
+      });
       
       logger.success(`Flujo cargado desde localStorage: ${flowId} (${flow.nodes.length} nodos, ${flow.connections.length} conexiones)`);
       return flow;

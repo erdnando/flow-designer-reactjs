@@ -560,7 +560,9 @@ describe('Performance Baseline', () => {
 
 2. **Revertir a Commit Anterior**:
    ```bash
-   git revert HEAD
+   git reset --hard HEAD
+   git clean -fd 
+   
    npm run build
    npm run test
    ```

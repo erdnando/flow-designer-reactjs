@@ -247,6 +247,12 @@ export class FlowService {
       return connection;
     } catch (error) {
       console.error('❌ Error in addConnection:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        flowId,
+        connectionData
+      });
       throw error;
     }
   }

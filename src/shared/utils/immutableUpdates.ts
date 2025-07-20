@@ -196,25 +196,31 @@ export const addConnectionImmutable = async (
   flow: Flow,
   connection: Connection
 ): Promise<Flow> => {
-  if (isFeatureEnabled('IMMUTABLE_STATE')) {
-    return updateFlowImmutable(flow, (draft) => {
-      draft.connections.push(connection);
-      draft.updatedAt = new Date();
-    });
-  } else {
-    const updatedFlow = new Flow({
-      id: flow.id,
-      name: flow.name,
-      description: flow.description,
-      nodes: flow.nodes,
-      connections: [...flow.connections, connection],
-      status: flow.status,
-      owner: flow.owner,
-      creator: flow.creator
+  try {
+    logger.debug('🔄 addConnectionImmutable called with:', { 
+      flowId: flow.id, 
+      connectionId: connection.id,
+      immutableFeatureEnabled: isFeatureEnabled('IMMUTABLE_STATE')
     });
     
-    updatedFlow.updatedAt = new Date();
-    return updatedFlow;
+    if (isFeatureEnabled('IMMUTABLE_STATE')) {
+      return updateFlowImmutable(flow, (draft) => {
+        draft.connections.push(connection);
+        draft.updatedAt = new Date();
+      });
+    } else {
+      // Método más simple y seguro - usar el método existente de la entidad
+      logger.debug('🔄 Using existing Flow entity method for adding connection');
+      const clonedFlow = flow.clone();
+      clonedFlow.addConnection(connection);
+      logger.debug('✅ Connection added via Flow.addConnection method');
+      return clonedFlow;
+    }
+  } catch (error) {
+    logger.error('❌ Error in addConnectionImmutable:', error);
+    logger.error('❌ Flow details:', { id: flow.id, connectionsCount: flow.connections.length });
+    logger.error('❌ Connection details:', { id: connection.id, sourceNodeId: connection.sourceNodeId, targetNodeId: connection.targetNodeId });
+    throw error;
   }
 };
 

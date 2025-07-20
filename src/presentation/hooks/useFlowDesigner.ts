@@ -2,9 +2,11 @@ import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { useReactFlow, useNodesState, useEdgesState } from 'reactflow';
 import { useFlowContext } from '../context/FlowContext';
 import { useConnectionValidation } from './useConnectionValidation';
+import { useNotificationHelpers } from './useNotificationHelpers';
 import type { FlowNode, FlowEdge, NodeType } from '../../shared/types';
 import { NODE_TYPES } from '../../shared/constants';
 import { PositionPersistenceService } from '../../infrastructure/services/PositionPersistenceService';
+import { ViewportPersistenceService } from '../../infrastructure/services/ViewportPersistenceService';
 import { Position } from '../../domain/value-objects/Position';
 import { logger } from '../../shared/utils';
 
@@ -191,11 +193,15 @@ const handleNodeDeletion = async (
 
 export const useFlowDesigner = () => {
   const { state, actions } = useFlowContext();
-  const { project } = useReactFlow();
+  const { project, getViewport, setViewport } = useReactFlow();
   const { isConnectionValid, getConnectionHelpMessage } = useConnectionValidation();
+  const { showConnectionError } = useNotificationHelpers();
   
   // Servicio de persistencia de posiciones
   const positionPersistence = useMemo(() => new PositionPersistenceService(), []);
+  
+  // Servicio de persistencia de viewport
+  const viewportPersistence = useMemo(() => new ViewportPersistenceService(), []);
   
   // Tracking de nodos que están siendo arrastrados activamente
   const draggingNodesRef = useRef<Set<string>>(new Set());
@@ -749,18 +755,33 @@ export const useFlowDesigner = () => {
 
   // INTERCEPTOR NUCLEAR - Bloquear TODOS los cambios de posición no autorizados
   const handleNodesChange = useCallback((changes: any[]) => {
-    logger.debug('===== NUCLEAR INTERCEPTOR =====');
-    logger.debug('Raw changes received:', changes);
-    logger.debug('Currently dragging nodes:', Array.from(draggingNodesRef.current));
-    logger.debug('Is syncing:', isSyncingRef.current);
+    const isDragging = draggingNodesRef.current.size > 0;
+    // Detectar drag también en los cambios actuales
+    const hasDragChanges = changes.some(change => 
+      change.type === 'position' && (change.dragging === true || change.dragging === false)
+    );
+    const isDragOperation = isDragging || hasDragChanges;
+    
+    // OPTIMIZACIÓN: Logging reducido durante drag para evitar spam
+    if (!isDragOperation) {
+      logger.debug('===== NUCLEAR INTERCEPTOR =====');
+      logger.debug('Raw changes received:', changes);
+      logger.debug('Currently dragging nodes:', Array.from(draggingNodesRef.current));
+      logger.debug('Is syncing:', isSyncingRef.current);
+    }
     
     // SUPER AGRESIVO: Bloquear CUALQUIER cambio que pueda afectar la posición
     const authorizedChanges = changes.filter(change => {
-      logger.debug('Analyzing change:', change);
+      // OPTIMIZACIÓN: Solo loggear análisis durante no-drag para evitar spam
+      if (!isDragOperation) {
+        logger.debug('Analyzing change:', change);
+      }
       
       // FASE 2: Permitir cambios de agregado de nodos (add) con validación simplificada
       if (change.type === 'add') {
-        logger.success('AUTHORIZED: Adding new node:', change.id);
+        if (!isDragging) {
+          logger.success('AUTHORIZED: Adding new node:', change.id);
+        }
         
         // Usar la función de validación de posición
         if (change.item) {
@@ -865,7 +886,10 @@ export const useFlowDesigner = () => {
       return false;
     });
     
-    logger.debug('Authorized changes:', authorizedChanges);
+    // OPTIMIZACIÓN: Solo loggear cambios autorizados cuando no hay drag
+    if (!isDragging) {
+      logger.debug('Authorized changes:', authorizedChanges);
+    }
     
     // Si no hay cambios autorizados, restaurar posiciones originales
     if (authorizedChanges.length === 0) {
@@ -968,7 +992,10 @@ export const useFlowDesigner = () => {
       }
     });
     
-    logger.debug('===== END NUCLEAR INTERCEPTOR =====');
+    // OPTIMIZACIÓN: Solo loggear end cuando no hay drag
+    if (!isDragging) {
+      logger.debug('===== END NUCLEAR INTERCEPTOR =====');
+    }
   }, [onNodesChange, actions, nodes, setNodes, positionPersistence, state.currentFlow]);
 
   // Wrapper para onEdgesChange que maneja nuestro estado personalizado
@@ -1054,7 +1081,8 @@ export const useFlowDesigner = () => {
       
       if (!validationResult.valid) {
         logger.error('❌ Conexión rechazada por validación:', validationResult.message);
-        alert(`Conexión no válida: ${validationResult.message}`);
+        // Mostrar notificación de error en lugar de alert
+        showConnectionError(validationResult.message || 'Conexión no válida');
         return;
       }
       
@@ -1129,7 +1157,7 @@ export const useFlowDesigner = () => {
     };
     
     createConnection();
-  }, [actions, setEdges, state.currentFlow, initialEdges, isConnectionValid]);
+  }, [actions, setEdges, state.currentFlow, initialEdges, isConnectionValid, showConnectionError]);
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -1408,6 +1436,8 @@ export const useFlowDesigner = () => {
       
       if (!validationResult.valid) {
         logger.debug('❌ Conexión inválida durante arrastre:', validationResult.message);
+        // Mostrar notificación de error al usuario
+        showConnectionError(validationResult.message || 'Conexión no válida');
         return false;
       }
       
@@ -1417,7 +1447,7 @@ export const useFlowDesigner = () => {
     
     logger.debug('❌ isValidConnection: no hay currentFlow');
     return false;
-  }, [state.currentFlow, isConnectionValid]);
+  }, [state.currentFlow, isConnectionValid, showConnectionError]);
 
   // Función para obtener ayuda sobre conexiones
   const getConnectionHelp = useCallback((sourceNodeType: string, targetNodeType: string, handleType: 'source' | 'target') => {
@@ -1455,6 +1485,54 @@ export const useFlowDesigner = () => {
     }
   }, [nodes, state.currentFlow, state.isLoading, positionPersistence]);
 
+  // Manejar persistencia del viewport (zoom y posición)
+  const hasPersistedViewport = useRef<boolean>(false);
+  
+  useEffect(() => {
+    if (!state.currentFlow) {
+      return;
+    }
+
+    // Cargar viewport persistido cuando se carga un flujo
+    const persistedViewport = viewportPersistence.loadFlowViewport(state.currentFlow.id);
+    if (persistedViewport) {
+      hasPersistedViewport.current = true;
+      logger.debug('🔍 Cargando viewport persistido:', persistedViewport);
+      // Usar un delay para asegurar que ReactFlow esté listo
+      setTimeout(() => {
+        setViewport(persistedViewport, { duration: 300 });
+        logger.debug('✅ Viewport aplicado después del delay');
+      }, 400); // Más tiempo que el onInit (200ms)
+    } else {
+      hasPersistedViewport.current = false;
+    }
+  }, [state.currentFlow, viewportPersistence, setViewport]);
+
+  // Función para guardar el viewport actual
+  const saveCurrentViewport = useCallback(() => {
+    if (!state.currentFlow) {
+      return;
+    }
+    
+    const currentViewport = getViewport();
+    viewportPersistence.saveFlowViewport(state.currentFlow.id, currentViewport);
+    logger.debug('💾 Viewport guardado:', currentViewport);
+  }, [state.currentFlow, getViewport, viewportPersistence]);
+
+  // Función para obtener estadísticas de viewport
+  const getViewportStats = useCallback(() => {
+    return viewportPersistence.getStats();
+  }, [viewportPersistence]);
+
+  // Función para limpiar viewport persistido del flujo actual
+  const clearPersistedViewport = useCallback(() => {
+    if (!state.currentFlow) {
+      return;
+    }
+    viewportPersistence.clearFlowViewports(state.currentFlow.id);
+    logger.info('🧹 Viewport persistido limpiado para flujo:', state.currentFlow.id);
+  }, [state.currentFlow, viewportPersistence]);
+
   return {
     // Estado
     nodes: nodes,
@@ -1478,6 +1556,12 @@ export const useFlowDesigner = () => {
     getPersistenceStats,
     clearPersistedPositions,
     getConnectionHelp,
+    
+    // Funciones de viewport
+    saveCurrentViewport,
+    getViewportStats,
+    clearPersistedViewport,
+    hasPersistedViewport,
     
     // Acciones
     addNode: actions.addNode,

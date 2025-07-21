@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useCallback, useMemo, useEffect, ReactNode, useState } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useMemo, useEffect, ReactNode, useState, useRef } from 'react';
 import { Flow } from '../../domain/entities/Flow';
 import { Node } from '../../domain/entities/Node';
 import type { Connection } from '../../domain/entities/Connection';
@@ -12,7 +12,6 @@ import {
   updateNodeImmutable, 
   addNodeImmutable, 
   removeNodeImmutable, 
-  addConnectionImmutable, 
   removeConnectionImmutable 
 } from '../../shared/utils/immutableUpdates';
 
@@ -163,13 +162,29 @@ const flowReducer = (state: FlowState, action: FlowAction): FlowState => {
         console.log('❌ No current flow in reducer');
         return state;
       }
-      const flowWithNewConnection = state.currentFlow.clone();
-      console.log('🔧 Flow cloned, adding connection...');
-      flowWithNewConnection.addConnection(action.payload);
-      console.log('🔧 Connection added to flow. Total connections:', flowWithNewConnection.connections.length);
+      
+      console.log('🔧 Creating new flow with updated connections...');
+      
+      // Verificar si la conexión ya existe para evitar duplicados
+      const existingConnection = state.currentFlow.connections.find(
+        conn => conn.id === action.payload.id
+      );
+      
+      if (existingConnection) {
+        console.log('⚠️ Connection already exists, skipping');
+        return state;
+      }
+      
+      // Crear nuevo flow con la conexión agregada
+      const updatedFlow = new Flow({
+        ...state.currentFlow,
+        connections: [...state.currentFlow.connections, action.payload]
+      });
+      
+      console.log('🔧 Connection added to flow. Total connections:', updatedFlow.connections.length);
       const addConnectionState = {
         ...state,
-        currentFlow: flowWithNewConnection
+        currentFlow: updatedFlow
       };
       console.log('✅ New state created with updated flow and connections');
       return addConnectionState;
@@ -228,6 +243,9 @@ interface FlowProviderProps {
 export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(flowReducer, initialState);
   const { showWarning } = useNotificationHelpers();
+  
+  // Protección contra doble inicialización
+  const isInitializedRef = useRef(false);
   
   // Estado de selección para el sistema de propiedades
   const [selection, setSelection] = useState<SelectionState>({
@@ -294,10 +312,17 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
 
   // Inicializar: cargar flujo guardado o crear uno nuevo
   useEffect(() => {
+    // Protección contra doble inicialización
+    if (isInitializedRef.current) {
+      logger.debug('🔒 Inicialización ya completada, omitiendo...');
+      return;
+    }
+    
     logger.debug('Inicializando flujo - buscando guardados o creando nuevo...');
     
     const initializeFlow = async () => {
       try {
+        isInitializedRef.current = true; // Marcar como inicializado inmediatamente
         dispatch({ type: 'SET_LOADING', payload: true });
         
         // Verificar si hay flujos guardados
@@ -627,12 +652,9 @@ export const FlowProvider: React.FC<FlowProviderProps> = ({ children }) => {
         console.log('✅ Connection created:', connection);
         console.log('🔍 Connection mapping details:', connection.mapping);
         
-        // 🔄 Usar sistema inmutable para agregar conexión
-        const updatedFlow = await addConnectionImmutable(state.currentFlow, connection);
-        
-        // Actualizar estado con flujo actualizado
-        dispatch({ type: 'SET_CURRENT_FLOW', payload: updatedFlow });
-        console.log('✅ Connection added using immutable system');
+        // ✅ Usar reducer ADD_CONNECTION para actualización immutable
+        dispatch({ type: 'ADD_CONNECTION', payload: connection });
+        console.log('✅ Connection added using ADD_CONNECTION reducer');
         
       } catch (error) {
         console.error('❌ Error in addConnection:', error);

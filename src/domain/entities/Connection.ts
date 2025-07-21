@@ -1,7 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
+import { immerable } from 'immer';
 import type { ConnectionStyle, ConnectionProps } from '../../shared/types';
 
 export class Connection {
+  [immerable] = true; // Marca para Immer compatibility
+  
   public readonly id: string;
   public sourceNodeId: string;
   public targetNodeId: string;

@@ -371,7 +371,7 @@ export const useFlowDesigner = () => {
     
     return converted;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.currentFlow, actions, positionPersistence, currentNodesSignature, forceUpdateCounter, dataTransformers]);
+  }, [state.currentFlow, actions, currentNodesSignature, forceUpdateCounter, dataTransformers]);
 
   const initialEdges: FlowEdge[] = useMemo(() => {
     if (!state.currentFlow) {
@@ -683,29 +683,39 @@ export const useFlowDesigner = () => {
 
   // Sincronizar edges cuando el estado cambie - MEJORADO PARA CONEXIONES INMEDIATAS
   useEffect(() => {
-    logger.debug('Syncing edges with state...');
-    logger.debug('Current edges count:', edges.length);
-    logger.debug('Initial edges count:', initialEdges.length);
-    logger.debug('Is syncing:', isSyncingRef.current);
+    const { ENABLE_EDGE_SYNC_LOGGING } = require('../../shared/config/migrationFlags').MODULAR_DECOMPOSITION_FLAGS;
+    
+    if (ENABLE_EDGE_SYNC_LOGGING) {
+      logger.debug('Syncing edges with state...');
+      logger.debug('Current edges count:', edges.length);
+      logger.debug('Initial edges count:', initialEdges.length);
+      logger.debug('Is syncing:', isSyncingRef.current);
+    }
     
     // Crear una firma única para los edges iniciales
     const initialEdgesSignature = JSON.stringify(
       initialEdges.map(e => ({ id: e.id, source: e.source, target: e.target }))
     );
     
-    logger.debug('Last synced edges signature:', lastSyncedEdgesRef.current);
-    logger.debug('Current initial edges signature:', initialEdgesSignature);
+    if (ENABLE_EDGE_SYNC_LOGGING) {
+      logger.debug('Last synced edges signature:', lastSyncedEdgesRef.current);
+      logger.debug('Current initial edges signature:', initialEdgesSignature);
+    }
     
     // CORRECCIÓN CRÍTICA: Solo saltear si estamos sincronizando Y las firmas son iguales
     // Esto permite que las conexiones nuevas se procesen inmediatamente
     if (isSyncingRef.current && lastSyncedEdgesRef.current === initialEdgesSignature) {
-      logger.debug('Already syncing same edges, skipping');
+      if (ENABLE_EDGE_SYNC_LOGGING) {
+        logger.debug('Already syncing same edges, skipping');
+      }
       return;
     }
     
     // Solo sincronizar si la firma ha cambiado
     if (lastSyncedEdgesRef.current !== initialEdgesSignature) {
-      logger.info('Edge signature changed, syncing...');
+      if (ENABLE_EDGE_SYNC_LOGGING) {
+        logger.info('Edge signature changed, syncing...');
+      }
       
       isSyncingRef.current = true;
       
@@ -716,7 +726,9 @@ export const useFlowDesigner = () => {
       // Forzar una actualización adicional después de un breve delay
       // para asegurar que ReactFlow renderice correctamente
       setTimeout(() => {
-        logger.debug('🔄 Forzando segunda actualización de edges para garantizar renderización');
+        if (ENABLE_EDGE_SYNC_LOGGING) {
+          logger.debug('🔄 Forzando segunda actualización de edges para garantizar renderización');
+        }
         setEdges(currentEdges => {
           // Comparar con el estado actual para asegurar consistencia
           const currentSignature = JSON.stringify(
@@ -724,7 +736,9 @@ export const useFlowDesigner = () => {
           );
           
           if (currentSignature !== initialEdgesSignature) {
-            logger.debug('🔄 Detectada inconsistencia, aplicando edges iniciales nuevamente');
+            if (ENABLE_EDGE_SYNC_LOGGING) {
+              logger.debug('🔄 Detectada inconsistencia, aplicando edges iniciales nuevamente');
+            }
             return initialEdges;
           }
           
@@ -735,13 +749,17 @@ export const useFlowDesigner = () => {
         isSyncingRef.current = false;
       }, 50);
     } else {
-      logger.debug('Edges signature unchanged, skipping');
+      if (ENABLE_EDGE_SYNC_LOGGING) {
+        logger.debug('Edges signature unchanged, skipping');
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialEdges, setEdges]);
 
   // NUEVO: Efecto específico para detectar conexiones que faltan en la renderización
   useEffect(() => {
+    const { ENABLE_EDGE_SYNC_LOGGING } = require('../../shared/config/migrationFlags').MODULAR_DECOMPOSITION_FLAGS;
+    
     // Solo ejecutar si tenemos datos válidos
     if (!state.currentFlow) {
       return;
@@ -750,11 +768,15 @@ export const useFlowDesigner = () => {
     const domainConnections = state.currentFlow.connections?.length || 0;
     const renderedEdges = edges.length;
     
-    logger.debug(`🔍 Verificando renderización: ${domainConnections} conexiones en dominio vs ${renderedEdges} edges renderizados`);
+    if (ENABLE_EDGE_SYNC_LOGGING) {
+      logger.debug(`🔍 Verificando renderización: ${domainConnections} conexiones en dominio vs ${renderedEdges} edges renderizados`);
+    }
     
     // Detectar discrepancia entre conexiones del dominio y edges renderizados
     if (domainConnections > renderedEdges) {
-      logger.warn(`🔍 DETECCIÓN DE RENDERIZACIÓN: ${domainConnections} conexiones en dominio vs ${renderedEdges} edges renderizados`);
+      if (ENABLE_EDGE_SYNC_LOGGING) {
+        logger.warn(`🔍 DETECCIÓN DE RENDERIZACIÓN: ${domainConnections} conexiones en dominio vs ${renderedEdges} edges renderizados`);
+      }
       
       // CORRECCIÓN CRÍTICA: No verificar isSyncingRef aquí para permitir actualizaciones forzadas
       // Forzar actualización inmediata
@@ -787,6 +809,25 @@ export const useFlowDesigner = () => {
       return () => clearTimeout(forcedUpdate);
     }
   }, [state.currentFlow, edges.length, initialEdges, setEdges]);
+
+  // NUEVO: Efecto específico para forzar actualización inmediata cuando cambien las conexiones
+  useEffect(() => {
+    if (!state.currentFlow?.connections) return;
+    
+    const connectionsCount = state.currentFlow.connections.length;
+    const edgesCount = edges.length;
+    
+    // Si hay desbalance entre conexiones y edges, forzar actualización inmediata
+    if (connectionsCount > edgesCount) {
+      logger.info(`🚀 FORZANDO actualización inmediata de edges: desbalance detectado (${connectionsCount} conexiones vs ${edgesCount} edges)`);
+      
+      // Forzar actualización inmediata sin restricciones
+      setTimeout(() => {
+        setEdges(initialEdges);
+        logger.info('✅ Edges actualizados forzadamente:', initialEdges.length);
+      }, 10);
+    }
+  }, [state.currentFlow?.connections, edges.length, initialEdges, setEdges]);
 
   // INTERCEPTOR NUCLEAR - Bloquear TODOS los cambios de posición no autorizados
   const handleNodesChange = useCallback((changes: any[]) => {

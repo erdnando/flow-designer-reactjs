@@ -1,9 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
+import { immerable } from 'immer';
 import type { FlowProps } from '../../shared/types';
 import { Node } from './Node';
 import { Connection } from './Connection';
 
 export class Flow {
+  [immerable] = true; // Marca para Immer compatibility
+  
   public readonly id: string;
   public name: string;
   public description: string;
@@ -38,7 +41,7 @@ export class Flow {
   }
 
   addNode(node: Node): Flow {
-    this.nodes.push(node);
+    this.nodes = [...this.nodes, node];
     this.updatedAt = new Date();
     return this;
   }
@@ -86,7 +89,7 @@ export class Flow {
       }
       
       console.log('✅ Adding new connection to flow');
-      this.connections.push(connection);
+      this.connections = [...this.connections, connection];
     }
     
     this.updatedAt = new Date();

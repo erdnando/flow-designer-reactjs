@@ -38,6 +38,11 @@ export const MODULAR_DECOMPOSITION_FLAGS = {
   ENABLE_MIGRATION_LOGGING: true,
   ENABLE_PERFORMANCE_MONITORING: true,
   
+  // Control granular de logging para evitar spam
+  ENABLE_EDGE_SYNC_LOGGING: false, // Deshabilitar el logging repetitivo de edge sync
+  ENABLE_DATA_TRANSFORMER_LOGGING: false, // Deshabilitar logging de transformadores
+  ENABLE_POSITION_LOGGING: false, // Deshabilitar logging de posiciones
+  
   // Rollback de emergencia
   FORCE_LEGACY_MODE: false, // Si true, usa solo el hook original
 };

@@ -1,7 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
+import { immerable } from 'immer';
 import type { Position, NodeData, NodeType, NodeProps } from '../../shared/types';
 
 export class Node {
+  [immerable] = true; // Marca para Immer compatibility
+  
   public readonly id: string;
   public type: NodeType;
   public position: Position;

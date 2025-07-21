@@ -236,13 +236,8 @@ export class FlowService {
       });
       console.log('✅ Connection created:', connection);
       
-      // Agregar conexión al flow
-      flow.addConnection(connection);
-      console.log('✅ Connection added to flow');
-      
-      // Guardar flow actualizado
-      await this.flowRepository.saveFlow(flow);
-      console.log('✅ Flow saved with new connection');
+      // NO MODIFICAR EL FLOW AQUÍ - Dejar que FlowContext lo haga mediante reducer immutable
+      console.log('🔄 Returning connection for FlowContext to handle state update');
       
       return connection;
     } catch (error) {

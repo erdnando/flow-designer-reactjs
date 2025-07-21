@@ -13,7 +13,9 @@ export interface PersistedFlowLayout {
 }
 
 export class PositionPersistenceService {
-  private readonly storageKey = 'flow-designer-positions';
+  private static instance?: PositionPersistenceService;
+  private readonly storageKey = 'flow-layouts';
+  private loggedFlows = new Set<string>(); // Track flows we've already logged
   private saveTimeouts = new Map<string, NodeJS.Timeout>();
   private readonly SAVE_DEBOUNCE_MS = 500; // Debounce saves por 500ms
 
@@ -76,7 +78,11 @@ export class PositionPersistenceService {
       const layout = allLayouts[flowId];
       
       if (!layout) {
-        console.log('📖 No persisted positions found for flow:', flowId);
+        // Only log once per flow to prevent spam
+        if (!this.loggedFlows.has(flowId)) {
+          console.log('📖 No persisted positions found for flow:', flowId);
+          this.loggedFlows.add(flowId);
+        }
         return new Map();
       }
 

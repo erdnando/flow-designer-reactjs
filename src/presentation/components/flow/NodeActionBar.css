@@ -14,6 +14,8 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(8px);
   animation: slideDown 0.2s ease-out;
+  /* Permitir que eventos de drag pasen a través del contenedor */
+  pointer-events: none;
 }
 
 @keyframes slideDown {
@@ -42,6 +44,8 @@
   transition: all 0.2s ease;
   padding: 0;
   margin: 0;
+  /* Habilitar eventos solo en los botones */
+  pointer-events: auto;
 }
 
 .node-action-bar__button:hover {

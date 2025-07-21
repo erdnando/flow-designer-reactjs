@@ -9,113 +9,77 @@ import { PositionPersistenceService } from '../../infrastructure/services/Positi
 import { ViewportPersistenceService } from '../../infrastructure/services/ViewportPersistenceService';
 import { Position } from '../../domain/value-objects/Position';
 import { logger } from '../../shared/utils';
+import { MODULAR_DECOMPOSITION_FLAGS } from '../../shared/config/migrationFlags';
 
-/**
- * Función utilidad para detectar cambios estructurales entre conjuntos de nodos
- * @param sourceNodes - Los nodos de origen (generalmente del estado de la aplicación)
- * @param targetNodes - Los nodos destino (generalmente del estado de ReactFlow)
- * @returns True si hay cambios estructurales significativos (nodos añadidos/eliminados)
- */
-const detectStructuralChanges = (
-  sourceNodes: { id: string }[], 
-  targetNodes: { id: string }[]
-): boolean => {
-  // Caso 1: Diferente número de nodos
-  if (sourceNodes.length !== targetNodes.length) {
-    return true;
-  }
-  
-  // Caso 2: Verificar si todos los IDs coinciden
-  const sourceIds = new Set(sourceNodes.map(node => node.id));
-  
-  // Verificar si hay algún nodo en target que no esté en source
-  const hasUnknownNodes = targetNodes.some(node => !sourceIds.has(node.id));
-  if (hasUnknownNodes) {
-    return true;
-  }
-  
-  // Verificar si el número de IDs únicos coincide con el número de nodos
-  // (esto detecta duplicados en cualquier colección)
-  if (sourceIds.size !== sourceNodes.length) {
-    return true;
-  }
-  
-  return false; // No hay cambios estructurales
-};
+// ✅ PASO 1: Importación condicional de funciones utilitarias
+import { 
+  detectStructuralChanges as extractedDetectStructuralChanges,
+  validateAndRoundPosition as extractedValidateAndRoundPosition,
+  determineFinalPosition as extractedDetermineFinalPosition
+} from './utilities/flowUtilities';
 
-/**
- * Función utilidad para validar y redondear coordenadas de posición
- * @param position - La posición a validar
- * @returns La posición redondeada o undefined si no es válida
- */
-const validateAndRoundPosition = (position: any): { x: number, y: number } | undefined => {
-  if (position && 
-      typeof position.x === 'number' && 
-      typeof position.y === 'number' &&
-      !isNaN(position.x) && 
-      !isNaN(position.y)) {
+// ✅ PASO 1: Selección condicional de funciones utilitarias
+const selectUtilityFunctions = () => {
+  if (MODULAR_DECOMPOSITION_FLAGS.USE_EXTRACTED_UTILITIES) {
     return {
-      x: Math.round(position.x),
-      y: Math.round(position.y)
+      detectStructuralChanges: extractedDetectStructuralChanges,
+      validateAndRoundPosition: extractedValidateAndRoundPosition,
+      determineFinalPosition: extractedDetermineFinalPosition
     };
   }
-  return undefined;
-};
-
-/**
- * Función utilidad para determinar la posición final de un nodo considerando todas las fuentes
- * @param nodeId - El ID del nodo
- * @param statePosition - Posición almacenada en el estado
- * @param positionsRef - Referencia de posiciones actuales
- * @param persistedPositions - Mapa de posiciones persistidas
- * @returns La posición final a utilizar para el nodo
- */
-const determineFinalPosition = (
-  nodeId: string,
-  statePosition: any,
-  positionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>,
-  persistedPositions: Map<string, any>,
-  isInitialLoad: boolean = false
-): { x: number, y: number } => {
-  // NUEVA PRIORIDAD DE POSICIONES:
-  // 1. Posición persistida (del localStorage) - Más prioritario para mantener la última posición conocida
-  // 2. Ref actual (posición más reciente en la UI)
-  // 3. Posición del estado (del modelo de dominio)
-  // 4. Posición por defecto calculada (espaciada y no amontonada)
   
-  // PRIMERO verificar si hay una posición persistida (esto mantiene la posición después del refresh)
-  const persistedPosition = persistedPositions.get(nodeId);
-  if (persistedPosition) {
-    const validatedPosition = validateAndRoundPosition(persistedPosition);
-    if (validatedPosition) {
-      return validatedPosition;
+  // Funciones originales inline (mantenidas para compatibilidad)
+  return {
+    detectStructuralChanges: (sourceNodes: { id: string }[], targetNodes: { id: string }[]): boolean => {
+      if (sourceNodes.length !== targetNodes.length) return true;
+      const sourceIds = new Set(sourceNodes.map(node => node.id));
+      const hasUnknownNodes = targetNodes.some(node => !sourceIds.has(node.id));
+      if (hasUnknownNodes) return true;
+      if (sourceIds.size !== sourceNodes.length) return true;
+      return false;
+    },
+    validateAndRoundPosition: (position: any): { x: number, y: number } | undefined => {
+      if (position && 
+          typeof position.x === 'number' && 
+          typeof position.y === 'number' &&
+          !isNaN(position.x) && 
+          !isNaN(position.y)) {
+        return { x: Math.round(position.x), y: Math.round(position.y) };
+      }
+      return undefined;
+    },
+    determineFinalPosition: (
+      nodeId: string,
+      statePosition: any,
+      positionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>,
+      persistedPositions: Map<string, any>,
+      isInitialLoad: boolean = false
+    ): { x: number, y: number } => {
+      // Función helper inline para validación
+      const validatePos = (pos: any) => {
+        if (pos && typeof pos.x === 'number' && typeof pos.y === 'number' && !isNaN(pos.x) && !isNaN(pos.y)) {
+          return { x: Math.round(pos.x), y: Math.round(pos.y) };
+        }
+        return undefined;
+      };
+      
+      const persistedPosition = persistedPositions.get(nodeId);
+      if (persistedPosition) {
+        const validatedPosition = validatePos(persistedPosition);
+        if (validatedPosition) return validatedPosition;
+      }
+      const existingPosition = positionsRef.current.get(nodeId);
+      if (existingPosition) return existingPosition;
+      const validatedStatePosition = validatePos(statePosition);
+      if (validatedStatePosition) return validatedStatePosition;
+      const nodeIndex = persistedPositions.size;
+      const spacing = 200;
+      const cols = 4;
+      const col = nodeIndex % cols;
+      const row = Math.floor(nodeIndex / cols);
+      return { x: 100 + (col * spacing), y: 100 + (row * spacing) };
     }
-  }
-  
-  // SEGUNDO, usar la referencia actual si existe
-  const existingPosition = positionsRef.current.get(nodeId);
-  if (existingPosition) {
-    return existingPosition;
-  }
-  
-  // TERCERO, usar la posición del estado (modelo de dominio) si es válida
-  const validatedStatePos = validateAndRoundPosition(statePosition);
-  if (validatedStatePos) {
-    return validatedStatePos;
-  }
-  
-  // Si todo falla, generar una posición por defecto calculada para evitar el amontonamiento
-  // Usamos el nodeId como semilla para distribuir los nodos de manera determinística
-  // Esto asegura que cada nodo tenga su propia posición única basada en su ID
-  // y que siempre aparezca en la misma posición en cada carga si no hay otra información
-  const seed = nodeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  
-  // Creamos una cuadrícula virtual para distribuir los nodos de manera espaciada
-  // con 5 columnas, cada una de 150px de ancho
-  const x = 100 + (seed % 5) * 150; // Distribuir horizontalmente
-  const y = 100 + Math.floor((seed % 25) / 5) * 150; // Distribuir verticalmente en 5 filas
-  
-  return { x, y };
+  };
 };
 
 /**
@@ -188,6 +152,9 @@ const handleNodeDeletion = async (
 };
 
 export const useFlowDesigner = () => {
+  // ✅ PASO 1: Obtener funciones utilitarias (modulares o originales)
+  const utilities = selectUtilityFunctions();
+  
   const { state, actions } = useFlowContext();
   const { project, getViewport, setViewport } = useReactFlow();
   const { isConnectionValid, getConnectionHelpMessage } = useConnectionValidation();
@@ -281,7 +248,7 @@ export const useFlowDesigner = () => {
     
     const converted = validNodes.map(node => {
       // FASE 3: Usar la función determineFinalPosition para obtener la posición final
-      const finalPosition = determineFinalPosition(
+      const finalPosition = utilities.determineFinalPosition(
         node.id, 
         node.position, 
         nodePositionsRef, 
@@ -461,7 +428,7 @@ export const useFlowDesigner = () => {
       
       // FASE 3: Usar la función de validación para actualizar posiciones durante carga inicial
       initialNodes.forEach(node => {
-        const roundedPosition = validateAndRoundPosition(node.position);
+        const roundedPosition = utilities.validateAndRoundPosition(node.position);
         if (roundedPosition) {
           nodePositionsRef.current.set(node.id, roundedPosition);
         } else {
@@ -485,7 +452,7 @@ export const useFlowDesigner = () => {
     
     // FASE 1: Usar la función de detección de cambios estructurales mejorada
     // para identificar si hay cambios importantes en la estructura (adiciones/eliminaciones)
-    const hasStructuralChanges = detectStructuralChanges(initialNodes, nodes);
+    const hasStructuralChanges = utilities.detectStructuralChanges(initialNodes, nodes);
     
     // Verificar si las firmas son diferentes (puede indicar un refresh o cambios de posición)
     const signaturesDiffer = lastSyncedNodesRef.current !== initialNodesSignature;
@@ -505,7 +472,7 @@ export const useFlowDesigner = () => {
       
       // FASE 3: Usar la función de validación para actualizar posiciones durante sincronización
       initialNodes.forEach(node => {
-        const roundedPosition = validateAndRoundPosition(node.position);
+        const roundedPosition = utilities.validateAndRoundPosition(node.position);
         if (roundedPosition) {
           nodePositionsRef.current.set(node.id, roundedPosition);
         } else {
@@ -787,7 +754,7 @@ export const useFlowDesigner = () => {
         
         // Usar la función de validación de posición
         if (change.item) {
-          const roundedPosition = validateAndRoundPosition(change.item.position);
+          const roundedPosition = utilities.validateAndRoundPosition(change.item.position);
           if (roundedPosition) {
             nodePositionsRef.current.set(change.item.id, roundedPosition);
           } else {
@@ -805,7 +772,7 @@ export const useFlowDesigner = () => {
           // Actualizar nuestras referencias con las nuevas posiciones redondeadas
           if (change.item && Array.isArray(change.item)) {
             change.item.forEach((node: any) => {
-              const roundedPosition = validateAndRoundPosition(node.position);
+              const roundedPosition = utilities.validateAndRoundPosition(node.position);
               if (roundedPosition) {
                 nodePositionsRef.current.set(node.id, roundedPosition);
               } else {
@@ -834,7 +801,7 @@ export const useFlowDesigner = () => {
           draggingNodesRef.current.add(change.id);
           
           // Usar la función de validación de posición
-          const roundedPosition = validateAndRoundPosition(change.position);
+          const roundedPosition = utilities.validateAndRoundPosition(change.position);
           if (roundedPosition) {
             nodePositionsRef.current.set(change.id, roundedPosition);
           } else {
@@ -849,7 +816,7 @@ export const useFlowDesigner = () => {
             draggingNodesRef.current.delete(change.id);
             
             // Usar la función de validación de posición
-            const roundedPosition = validateAndRoundPosition(change.position);
+            const roundedPosition = utilities.validateAndRoundPosition(change.position);
             if (roundedPosition) {
               nodePositionsRef.current.set(change.id, roundedPosition);
             } else {
@@ -979,7 +946,7 @@ export const useFlowDesigner = () => {
         logger.debug('Final position update for:', change.id, 'Position:', change.position);
         
         // FASE 2: Usar la función de validación de posición para el manejo final
-        const roundedPosition = validateAndRoundPosition(change.position);
+        const roundedPosition = utilities.validateAndRoundPosition(change.position);
         if (roundedPosition) {
           // Actualizar la posición en nodePositionsRef inmediatamente
           nodePositionsRef.current.set(change.id, roundedPosition);
@@ -1475,7 +1442,7 @@ export const useFlowDesigner = () => {
       // Guardar las posiciones de todos los nodos
       nodes.forEach(node => {
         if (node.position) {
-          const validPosition = validateAndRoundPosition(node.position);
+          const validPosition = utilities.validateAndRoundPosition(node.position);
           if (validPosition) {
             const domainPosition = new Position(validPosition.x, validPosition.y);
             positions.set(node.id, domainPosition);

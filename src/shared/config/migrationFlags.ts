@@ -6,7 +6,7 @@
 
 export const MODULAR_DECOMPOSITION_FLAGS = {
   // Fase 0.1: Funciones utilitarias
-  USE_EXTRACTED_UTILITIES: false,
+  USE_EXTRACTED_UTILITIES: true, // ✅ PASO 1: Funciones utilitarias seguras
   
   // Fase 0.2: Gestión de viewport
   USE_VIEWPORT_MODULE: false,

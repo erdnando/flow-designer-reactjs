@@ -8,17 +8,17 @@ export const MODULAR_DECOMPOSITION_FLAGS = {
   // Fase 0.1: Funciones utilitarias
   USE_EXTRACTED_UTILITIES: true, // ✅ PASO 1: Funciones utilitarias seguras
   
-  // Fase 0.2: Gestión de viewport
-  USE_VIEWPORT_MODULE: false,
+  // Fase 0.2: Gestión de persistencia
+  USE_PERSISTENCE_SERVICES: true, // ✅ PASO 2: Servicios de persistencia seguros
   
-  // Fase 0.3: Utilities y helpers
-  USE_UTILS_MODULE: false,
+  // Fase 0.3: Transformadores de datos
+  USE_DATA_TRANSFORMERS: true, // ✅ PASO 3: Transformadores de datos seguros
   
     // Flag para controlar el módulo de posición (actualmente deshabilitado por bucles infinitos)
   USE_POSITION_MODULE: false, // DESHABILITADO: Volviendo a la versión original
   
-  // Fase 0.5: Transformadores de datos
-  USE_DATA_TRANSFORMERS: false,
+  // Fase 0.5: Utilities y helpers adicionales
+  USE_UTILS_MODULE: false,
   
   // Fase 0.6: Drag & Drop
   USE_DRAGDROP_MODULE: false,
